@@ -41,6 +41,16 @@ The installed app contains the built frontend and SQLite plugin; it does not req
 
 The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
 
+## Public release downloads
+
+For a public repository, direct users to the GitHub Release page created automatically by the `v*` tag workflow. The release includes `Tournament-Desk-windows-setup.exe`, `Tournament-Desk-macOS-universal.dmg`, and `SHA256SUMS.txt`. Users can verify a Windows download from PowerShell with:
+
+```powershell
+Get-FileHash '.\Tournament Desk_0.1.0_x64-setup.exe' -Algorithm SHA256
+```
+
+The Windows installer intentionally embeds WebView2 and installs for the current user, so it works without a separate WebView2 download or administrator approval. This makes the installer larger, but avoids a network-dependent first launch. Once a trusted Windows code-signing certificate is configured in the repository secrets, the same workflow signs the installer and reduces SmartScreen friction; until then, label the release as unsigned.
+
 ## V1 workflow
 
 Create a tournament, add divisions and teams (or import CSV), generate and adjust pools, create round-robin matches, generate a fixed-court schedule, print two score sheets per letter page, enter results, review live standings, and create/advance single-elimination playoffs with a third-place match.
