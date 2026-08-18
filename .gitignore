@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.DS_Store
+
+# Tauri build output and generated schemas
+src-tauri/target/
+src-tauri/gen/
+*.dmg
+*.msi
+*.exe
+
+# Local signing material and CI-generated signing config
+certificate/
+*.p12
+*.pfx
+*.cer
+*.key
+src-tauri/tauri.windows.conf.json
