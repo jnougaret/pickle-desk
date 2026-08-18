@@ -41,10 +41,19 @@ jobs:
           echo "APPLE_SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | awk -F'\"' '/Developer ID Application/{print $2; exit}')" >> "$GITHUB_ENV"
       - run: npm run build && npm run tauri:smoke
       - run: npm run tauri:build:mac
+      - name: Prepare macOS release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg_path="$(find src-tauri/target/universal-apple-darwin/release/bundle/macos -maxdepth 1 -type f -name '*.dmg' ! -name 'rw.*' -print -quit)"
+          test -n "$dmg_path"
+          mkdir -p release/macos
+          cp "$dmg_path" release/macos/Tournament-Desk-macOS-universal.dmg
+          shasum -a 256 release/macos/Tournament-Desk-macOS-universal.dmg > release/macos/Tournament-Desk-macOS-universal.dmg.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: macos-universal
-          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          path: release/macos/*
 
   windows:
     runs-on: windows-latest
@@ -94,8 +103,27 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: release-artifacts
+      - name: Prepare published release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          macos_dmg="$(find release-artifacts/macos-universal -type f -name 'Tournament-Desk-macOS-universal.dmg' -print -quit)"
+          test -n "$macos_dmg"
+          cp "$macos_dmg" release-assets/Tournament-Desk-macOS-universal.dmg
+
+          windows_setup="$(find release-artifacts/windows-nsis -type f -name '*-setup.exe' -print -quit)"
+          test -n "$windows_setup"
+          cp "$windows_setup" release-assets/Tournament-Desk-windows-setup.exe
+
+          sha256sum release-assets/Tournament-Desk-macOS-universal.dmg release-assets/Tournament-Desk-windows-setup.exe > release-assets/SHA256SUMS.txt
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --generate-notes
-          find release-artifacts -type f -print0 | xargs -0 -n1 gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            release-assets/*
