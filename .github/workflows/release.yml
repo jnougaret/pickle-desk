@@ -43,6 +43,9 @@ jobs:
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
       WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
       WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
+      MSIX_PACKAGE_NAME: ${{ vars.MSIX_PACKAGE_NAME }}
+      MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+      MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -77,6 +80,15 @@ jobs:
         with:
           name: windows-nsis
           path: src-tauri/target/release/bundle/nsis/*-setup.exe
+      - name: Build Microsoft Store MSIX package
+        if: ${{ env.MSIX_PACKAGE_NAME != '' && env.MSIX_PUBLISHER != '' && env.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        run: npm run tauri:package:msix
+      - name: Upload Microsoft Store MSIX package
+        if: ${{ env.MSIX_PACKAGE_NAME != '' && env.MSIX_PUBLISHER != '' && env.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msix
+          path: src-tauri/target/release/bundle/msix/*.msix
 
   publish:
     needs: [macos, windows]
@@ -99,7 +111,15 @@ jobs:
           test -n "$windows_setup"
           cp "$windows_setup" release-assets/Tournament-Desk-windows-setup.exe
 
+          msix_path="$(find release-artifacts -type f -name '*.msix' -print -quit || true)"
+          if [ -n "$msix_path" ]; then
+            cp "$msix_path" release-assets/Tournament-Desk-windows.msix
+          fi
+
           sha256sum release-assets/Tournament-Desk-macOS-universal.dmg release-assets/Tournament-Desk-windows-setup.exe > release-assets/SHA256SUMS.txt
+          if [ -f release-assets/Tournament-Desk-windows.msix ]; then
+            sha256sum release-assets/Tournament-Desk-windows.msix >> release-assets/SHA256SUMS.txt
+          fi
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |

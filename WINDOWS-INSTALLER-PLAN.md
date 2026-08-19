@@ -1,6 +1,6 @@
 # Windows installer plan
 
-This document contains a ready-to-run prompt for a Windows machine with the repository checked out. It builds the NSIS installer, validates the application, and verifies that the installed app works offline.
+This document contains a ready-to-run prompt for a Windows machine with the repository checked out. It builds the NSIS installer, validates the application, and verifies that the installed app works offline. The Microsoft Store MSIX flow is documented separately in `packaging/msix/README.md`.
 
 ## Prerequisites
 

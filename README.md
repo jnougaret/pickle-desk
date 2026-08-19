@@ -35,11 +35,17 @@ npm run tauri:dev
 npm run tauri:check
 npm run tauri:build:mac       # universal-apple-darwin DMG on macOS
 npm run tauri:build:windows  # NSIS setup.exe on Windows
+npm run tauri:package:msix   # Microsoft Store MSIX from the Windows Tauri executable
 ```
 
 The installed app contains the built frontend and SQLite plugin; it does not require Node, npm, Rust, or a separately installed SQLite runtime. The NSIS configuration embeds the offline WebView2 installer, so first installation does not need internet access; test the large installer on a clean supported Windows image.
 
 The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
+
+The Microsoft Store MSIX path is documented in `packaging/msix/README.md`. It
+wraps the x64 Tauri executable with a Store-compatible desktop manifest and
+uses the exact package identity values reserved in Partner Center. Microsoft
+re-signs MSIX packages submitted to the Store after certification.
 
 ## Public release downloads
 

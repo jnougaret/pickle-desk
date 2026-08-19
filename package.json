@@ -14,7 +14,8 @@
     "tauri:smoke": "node scripts/tauri-smoke.mjs",
     "tauri:build": "tauri build",
     "tauri:build:mac": "tauri build --bundles dmg --target universal-apple-darwin",
-    "tauri:build:windows": "tauri build --bundles nsis"
+    "tauri:build:windows": "tauri build --bundles nsis",
+    "tauri:package:msix": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
