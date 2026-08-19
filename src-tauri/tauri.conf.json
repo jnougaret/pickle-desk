@@ -29,7 +29,7 @@
     "active": true,
     "targets": ["dmg", "nsis"],
     "category": "Utility",
-    "publisher": "Driftwood Pickleball",
+    "publisher": "Joshua Nougaret",
     "shortDescription": "Offline pickleball tournament operations desk",
     "longDescription": "Create divisions, schedule matches, print score sheets, enter results, and run playoffs offline.",
     "macOS": {
