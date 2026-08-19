@@ -43,13 +43,7 @@ The release workflow in `.github/workflows/release.yml` builds a universal macOS
 
 ## Public release downloads
 
-For a public repository, direct users to the GitHub Release page created automatically by the `v*` tag workflow. The release includes `Tournament-Desk-windows-setup.exe`, `Tournament-Desk-macOS-universal.dmg`, and `SHA256SUMS.txt`. Users can verify a Windows download from PowerShell with:
-
-```powershell
-Get-FileHash '.\Tournament Desk_0.1.0_x64-setup.exe' -Algorithm SHA256
-```
-
-The Windows installer intentionally embeds WebView2 and installs for the current user, so it works without a separate WebView2 download or administrator approval. This makes the installer larger, but avoids a network-dependent first launch. Once a trusted Windows code-signing certificate is configured in the repository secrets, the same workflow signs the installer and reduces SmartScreen friction; until then, label the release as unsigned.
+Send users to the [Tournament Desk downloads page](DOWNLOADS.md). It provides stable Windows and macOS links to the latest GitHub Release, release notes, checksums, and the short installation guidance users may need for unsigned builds.
 
 ## V1 workflow
 
