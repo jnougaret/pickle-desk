@@ -1,6 +1,18 @@
-# Tournament Desk
+# Pickle Desk
 
 Offline-first pickleball tournament operations desk built with Svelte and TypeScript.
+
+## Choose your app version
+
+Pickle Desk is available in three app versions. They share the same tournament workflows and `.tournament` backup format, but each keeps data in its own local storage:
+
+| Version | Best for | Data and installation |
+| --- | --- | --- |
+| [PWA for Android and iPadOS](https://jnougaret.github.io/tournament-desk/) | Phones and tablets, including offline tournament-day use | Open the HTTPS app once, then install it from the browser. Tournaments stay in that browser profile. |
+| Windows desktop | Windows laptops and desktops | Install the NSIS setup from the [downloads page](DOWNLOADS.md), or [install from the Microsoft Store](https://apps.microsoft.com/detail/9P8ST763N7F3). Tournaments use the desktop SQLite database. |
+| macOS desktop | Intel and Apple silicon Macs | Install the universal DMG from the [downloads page](DOWNLOADS.md). Tournaments use the desktop SQLite database. |
+
+The PWA is the mobile version; it is not a fourth native installer and it does not automatically synchronize with either desktop version. Export a `.tournament` file when moving a tournament between versions.
 
 ## Run locally
 
@@ -9,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Open the local Vite URL in a browser. Tournament data is stored in local browser storage and can be exported as a portable, versioned `.tournament` JSON file for backup or restore. The app does not require a server or internet connection during tournament operation.
+Open the local Vite URL in a browser. This is the same browser repository used by the PWA: tournament data is stored in local browser storage and can be exported as a portable, versioned `.tournament` JSON file for backup or restore. After the PWA has been opened once online, its cached app shell can launch without a connection.
 
 ## Verify
 
@@ -17,6 +29,7 @@ Open the local Vite URL in a browser. Tournament data is stored in local browser
 npm test
 npx tsc --noEmit
 npm run build
+npm run pwa:smoke
 npm run tauri:smoke
 ```
 
@@ -24,7 +37,7 @@ The pure tournament engine lives in `src/lib/tournament/`: pool assignment, roun
 
 ## Persistence architecture
 
-Application code uses the async `TournamentRepository` contract. The browser adapter keeps using the existing origin/profile-specific `tournament-desk:tournaments` key, migrating its original raw array format on the next save. The Tauri adapter uses `sqlite:tournament-desk.db`, which Tauri resolves under the per-user application data directory; it stores one versioned JSON payload per tournament and applies Rust-registered migrations transactionally.
+Application code uses the async `TournamentRepository` contract. The browser adapter uses the Pickle Desk `pickle-desk:tournaments` key and migrates the prior `tournament-desk:tournaments` key on the next save. The Tauri adapter intentionally keeps `sqlite:tournament-desk.db` as its compatibility-stable database path so installed desktop data is not orphaned during the rename; it stores one versioned JSON payload per tournament and applies Rust-registered migrations transactionally.
 
 `.tournament` files are the stable transfer and backup format. New files contain `format`, `schemaVersion`, and `exportedAt`; legacy raw Tournament JSON remains importable. Moving from browser to desktop is explicit: export a `.tournament` file in the browser, install the desktop app, and import the file there. Browser localStorage is not automatically visible to the desktop app.
 
@@ -40,7 +53,7 @@ npm run tauri:package:msix   # Microsoft Store MSIX from the Windows Tauri execu
 
 The installed app contains the built frontend and SQLite plugin; it does not require Node, npm, Rust, or a separately installed SQLite runtime. The NSIS configuration embeds the offline WebView2 installer, so first installation does not need internet access; test the large installer on a clean supported Windows image.
 
-The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
+The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. The Pages workflow in `.github/workflows/pages.yml` builds and deploys the third, browser-based PWA at `https://jnougaret.github.io/tournament-desk/`. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
 
 The Microsoft Store MSIX path is documented in `packaging/msix/README.md`. It
 wraps the x64 Tauri executable with a Store-compatible desktop manifest and
@@ -49,7 +62,7 @@ re-signs MSIX packages submitted to the Store after certification.
 
 ## Public release downloads
 
-Send users to the [Tournament Desk downloads page](DOWNLOADS.md). It provides stable Windows and macOS links to the latest GitHub Release, release notes, checksums, and the short installation guidance users may need for unsigned builds.
+Send users to the [Pickle Desk downloads page](DOWNLOADS.md). It provides the live PWA entry point, stable Windows and macOS links to the latest GitHub Release, release notes, checksums, and the short installation guidance users may need for unsigned builds.
 
 ## V1 workflow
 

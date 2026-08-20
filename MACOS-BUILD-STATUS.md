@@ -1,5 +1,7 @@
 # macOS build status
 
+This document covers the macOS desktop version. The installable browser PWA for Android and iPadOS is deployed separately through GitHub Pages; see [DOWNLOADS.md](DOWNLOADS.md) for the three-version distribution guide.
+
 Build date: 2026-08-18
 
 ## Produced locally
@@ -7,13 +9,13 @@ Build date: 2026-08-18
 The universal release executable was built successfully:
 
 ```text
-/Users/joshua/Projects/tournament-desk/src-tauri/target/universal-apple-darwin/release/tournament-desk
+/Users/joshua/Projects/tournament-desk/src-tauri/target/universal-apple-darwin/release/pickle-desk
 ```
 
 The resulting Mach-O contains both `arm64` and `x86_64` slices. The standalone arm64 executable is also available at:
 
 ```text
-/Users/joshua/Projects/tournament-desk/src-tauri/target/aarch64-apple-darwin/release/tournament-desk
+/Users/joshua/Projects/tournament-desk/src-tauri/target/aarch64-apple-darwin/release/pickle-desk
 ```
 
 The universal build command was:
@@ -30,7 +32,7 @@ Both executables remain under `src-tauri/target/`, which is intentionally gitign
 The installer was produced here:
 
 ```text
-/Users/joshua/Projects/tournament-desk/src-tauri/target/universal-apple-darwin/release/bundle/macos/Tournament Desk_0.1.0_universal.dmg
+/Users/joshua/Projects/tournament-desk/src-tauri/target/universal-apple-darwin/release/bundle/macos/Pickle Desk_0.1.0_universal.dmg
 ```
 
 Verification:

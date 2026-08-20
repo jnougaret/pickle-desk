@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 if (-not $ExecutablePath) {
-  $ExecutablePath = Join-Path $repoRoot 'src-tauri\target\release\tournament-desk.exe'
+  $ExecutablePath = Join-Path $repoRoot 'src-tauri\target\release\pickle-desk.exe'
 }
 if (-not $PackageName) {
   $PackageName = $env:MSIX_PACKAGE_NAME
@@ -72,7 +72,7 @@ $resolvedMakeAppx = Resolve-Path -LiteralPath $MakeAppxPath -ErrorAction Stop
 $bundleRoot = Join-Path $repoRoot 'src-tauri\target\release\bundle'
 $stageRoot = Join-Path $bundleRoot ("msix-stage-$Version")
 if (-not $OutputPath) {
-  $OutputPath = Join-Path $bundleRoot ("msix\Tournament-Desk_${Version}_x64.msix")
+  $OutputPath = Join-Path $bundleRoot ("msix\Pickle-Desk_${Version}_x64.msix")
 }
 $resolvedOutput = if ([System.IO.Path]::IsPathRooted($OutputPath)) {
   [System.IO.Path]::GetFullPath($OutputPath)

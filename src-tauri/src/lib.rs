@@ -16,5 +16,5 @@ pub fn run() {
                 .build(),
         )
         .run(tauri::generate_context!())
-        .expect("error while running Tournament Desk");
+        .expect("error while running Pickle Desk");
 }

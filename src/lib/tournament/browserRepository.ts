@@ -2,7 +2,8 @@ import { parseTournamentJson, TOURNAMENT_FILE_FORMAT, TOURNAMENT_SCHEMA_VERSION,
 import type { Tournament } from './types';
 import type { TournamentRepository } from './repository';
 
-export const STORAGE_KEY = 'tournament-desk:tournaments';
+export const STORAGE_KEY = 'pickle-desk:tournaments';
+export const LEGACY_STORAGE_KEY = 'tournament-desk:tournaments';
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -51,7 +52,7 @@ export class BrowserTournamentRepository implements TournamentRepository {
 
   async list(): Promise<Tournament[]> {
     if (!this.storage) return [];
-    const raw = this.storage.getItem(STORAGE_KEY);
+    const raw = this.storage.getItem(STORAGE_KEY) ?? this.storage.getItem(LEGACY_STORAGE_KEY);
     return raw ? parseStoredTournaments(raw) : [];
   }
 
@@ -69,6 +70,7 @@ export class BrowserTournamentRepository implements TournamentRepository {
       tournaments: [valid, ...tournaments]
     };
     this.storage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+    this.storage.removeItem(LEGACY_STORAGE_KEY);
   }
 
   async delete(id: string): Promise<void> {
@@ -80,6 +82,7 @@ export class BrowserTournamentRepository implements TournamentRepository {
       tournaments
     };
     this.storage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+    this.storage.removeItem(LEGACY_STORAGE_KEY);
   }
 }
 

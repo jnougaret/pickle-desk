@@ -1,13 +1,13 @@
 [package]
-name = "tournament-desk"
+name = "pickle-desk"
 version = "0.1.0"
 description = "Offline pickleball tournament operations desk"
-authors = ["Tournament Desk"]
+authors = ["Joshua Nougaret"]
 edition = "2021"
 rust-version = "1.77.2"
 
 [lib]
-name = "tournament_desk_lib"
+name = "pickle_desk_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

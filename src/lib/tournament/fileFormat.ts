@@ -1,6 +1,7 @@
 import type { Tournament } from './types';
 
-export const TOURNAMENT_FILE_FORMAT = 'tournament-desk';
+export const TOURNAMENT_FILE_FORMAT = 'pickle-desk';
+const LEGACY_TOURNAMENT_FILE_FORMAT = 'tournament-desk';
 export const TOURNAMENT_SCHEMA_VERSION = 1;
 
 export interface TournamentFileEnvelope {
@@ -78,7 +79,7 @@ export function parseTournamentJson(text: string): Tournament {
   }
 
   if (!isRecord(parsed)) throw new Error('That file is not a valid tournament export.');
-  if (parsed.format === TOURNAMENT_FILE_FORMAT) {
+  if (parsed.format === TOURNAMENT_FILE_FORMAT || parsed.format === LEGACY_TOURNAMENT_FILE_FORMAT) {
     if (parsed.schemaVersion !== TOURNAMENT_SCHEMA_VERSION) {
       throw new Error(`Unsupported tournament export schema version: ${String(parsed.schemaVersion)}.`);
     }

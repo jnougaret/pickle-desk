@@ -1,6 +1,6 @@
 {
-  "name": "Tournament Desk",
-  "short_name": "Tournament Desk",
+  "name": "Pickle Desk",
+  "short_name": "Pickle Desk",
   "description": "Offline pickleball tournament operations desk.",
   "start_url": "/",
   "scope": "/",

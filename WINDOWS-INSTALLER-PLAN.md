@@ -1,5 +1,7 @@
 # Windows installer plan
 
+This document covers the Windows desktop version only. Pickle Desk also ships as a macOS desktop app and as an installable browser PWA for Android and iPadOS; direct users to [DOWNLOADS.md](DOWNLOADS.md) when they need to choose between the three versions.
+
 This document contains a ready-to-run prompt for a Windows machine with the repository checked out. It builds the NSIS installer, validates the application, and verifies that the installed app works offline. The Microsoft Store MSIX flow is documented separately in `packaging/msix/README.md`.
 
 ## Prerequisites
@@ -12,14 +14,14 @@ Install these before running the prompt:
 - Visual Studio 2022 Build Tools with “Desktop development with C++” and the Windows 10/11 SDK
 - PowerShell 7 or Windows PowerShell
 
-The repository’s Tauri configuration embeds the offline WebView2 installer. The build machine may need internet access to download npm, Cargo, and Tauri build dependencies, but the resulting installer should not need internet access to install WebView2 or run Tournament Desk.
+The repository’s Tauri configuration embeds the offline WebView2 installer. The build machine may need internet access to download npm, Cargo, and Tauri build dependencies, but the resulting installer should not need internet access to install WebView2 or run Pickle Desk.
 
 ## Ready-to-run prompt
 
 Paste this prompt into the coding agent running on Windows from the repository root:
 
 ```text
-Work in the checked-out Tournament Desk repository. Produce and verify the Windows NSIS installer.
+Work in the checked-out Pickle Desk repository. Produce and verify the Windows NSIS installer.
 
 First inspect the current branch, git status, git diff, git remote -v, and the repository instructions. Preserve intentional user work. Do not reset, clean, or discard files. Do not change the Svelte UI or tournament engine unless a build error requires a minimal fix.
 
@@ -62,7 +64,7 @@ Use PowerShell commands and keep all generated build output under the existing i
 
 6. Perform an offline smoke test on a clean Windows test account or VM:
    - Install the setup executable with network access disabled if the test image already has the required Windows components, or install using the embedded offline WebView2 path.
-   - Launch Tournament Desk with network access disabled.
+   - Launch Pickle Desk with network access disabled.
    - Create a small tournament, add one division and teams, generate pools/matches, and save a result.
    - Exit and relaunch the installed app; verify the tournament and result remain present.
    - Export a `.tournament` file, delete only the test tournament, then import the exported file and verify it restores correctly.

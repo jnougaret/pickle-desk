@@ -4,6 +4,13 @@ import path from 'node:path';
 const root = process.cwd();
 const dist = path.join(root, 'dist');
 
+function normalizeBasePath(value) {
+  const trimmed = value.replace(/^\/+|\/+$/g, '');
+  return trimmed ? `/${trimmed}/` : '/';
+}
+
+const basePath = normalizeBasePath(process.env.BASE_PATH || '/');
+
 function read(relativePath) {
   return fs.readFileSync(path.join(dist, relativePath), 'utf8');
 }
@@ -17,10 +24,11 @@ function pngSize(relativePath) {
 }
 
 const manifest = JSON.parse(read('manifest.webmanifest'));
-if (manifest.display !== 'standalone' || manifest.start_url !== '/' || manifest.scope !== '/') {
-  throw new Error('Manifest must be standalone and rooted at /.');
+if (manifest.display !== 'standalone' || manifest.start_url !== basePath || manifest.scope !== basePath) {
+  throw new Error(`Manifest must be standalone and rooted at ${basePath}.`);
 }
 if (!Array.isArray(manifest.icons) || manifest.icons.length < 2) throw new Error('Manifest is missing install icons.');
+if (!manifest.icons.every((icon) => icon.src.startsWith(basePath))) throw new Error('Manifest icons must use the configured base path.');
 if (pngSize('icons/icon-192.png').width !== 192 || pngSize('icons/icon-192.png').height !== 192) {
   throw new Error('The 192px PWA icon has the wrong dimensions.');
 }
@@ -37,13 +45,15 @@ const serviceWorker = read('sw.js');
 const match = serviceWorker.match(/const PRECACHE_URLS = (\[[\s\S]*?\]);/);
 if (!match) throw new Error('Service worker precache list is missing.');
 const urls = JSON.parse(match[1]);
-if (!urls.includes('/index.html') || !urls.includes('/manifest.webmanifest')) {
+if (!urls.includes(`${basePath}index.html`) || !urls.includes(`${basePath}manifest.webmanifest`)) {
   throw new Error('Service worker must precache the app shell and manifest.');
 }
 for (const url of urls) {
-  if (!fs.existsSync(path.join(dist, url.slice(1)))) throw new Error(`Precached file is missing: ${url}`);
+  if (!url.startsWith(basePath) || !fs.existsSync(path.join(dist, url.slice(basePath.length)))) {
+    throw new Error(`Precached file is missing: ${url}`);
+  }
 }
-for (const required of ['network-first', 'caches.match(request)', 'caches.match(\'/index.html\')']) {
+for (const required of ['CACHE_NAME = \'pickle-desk-', 'LEGACY_CACHE_PREFIX', 'network-first', 'caches.match(request)', 'caches.match(INDEX_URL)']) {
   if (!serviceWorker.includes(required)) throw new Error(`Service worker behavior is missing ${required}.`);
 }
 

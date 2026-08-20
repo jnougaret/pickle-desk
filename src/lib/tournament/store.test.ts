@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BrowserTournamentRepository, STORAGE_KEY, type StorageLike } from './browserRepository';
+import { BrowserTournamentRepository, LEGACY_STORAGE_KEY, STORAGE_KEY, type StorageLike } from './browserRepository';
 import {
   exportTournament,
   parseTournamentJson,
@@ -27,12 +27,13 @@ function tournament(id = 'tournament-1'): Tournament {
   };
 }
 
-function memoryStorage(initial?: string): StorageLike {
-  let value = initial ?? null;
+function memoryStorage(initial?: string, initialKey = STORAGE_KEY): StorageLike {
+  const values = new Map<string, string>();
+  if (initial !== undefined) values.set(initialKey, initial);
   return {
-    getItem: () => value,
-    setItem: (_key, next) => { value = next; },
-    removeItem: () => { value = null; }
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, next) => { values.set(key, next); },
+    removeItem: (key) => { values.delete(key); }
   };
 }
 
@@ -45,6 +46,12 @@ describe('versioned tournament files', () => {
     expect(parsed.format).toBe(TOURNAMENT_FILE_FORMAT);
     expect(parsed.schemaVersion).toBe(TOURNAMENT_SCHEMA_VERSION);
     expect(parseTournamentJson(JSON.stringify(parsed))).toEqual(source);
+  });
+
+  it('continues to read exports created with the former app name', async () => {
+    const source = tournament();
+    const legacy = { ...JSON.parse(await exportTournament(source).text()), format: 'tournament-desk' };
+    expect(parseTournamentJson(JSON.stringify(legacy))).toEqual(source);
   });
 
   it('accepts legacy raw Tournament exports and migrates missing v1 collections safely', () => {
@@ -90,6 +97,20 @@ describe('browser tournament repository contract', () => {
 
     expect(await repository.list()).toEqual([source]);
     await repository.save({ ...source, name: 'Migrated Classic' });
+    expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({
+      format: TOURNAMENT_FILE_FORMAT,
+      schemaVersion: TOURNAMENT_SCHEMA_VERSION
+    });
+  });
+
+  it('migrates the former app storage key on the next successful save', async () => {
+    const source = tournament();
+    const storage = memoryStorage(JSON.stringify([source]), LEGACY_STORAGE_KEY);
+    const repository = new BrowserTournamentRepository(storage);
+
+    expect(await repository.list()).toEqual([source]);
+    await repository.save({ ...source, name: 'Renamed Classic' });
+    expect(storage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
     expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({
       format: TOURNAMENT_FILE_FORMAT,
       schemaVersion: TOURNAMENT_SCHEMA_VERSION
