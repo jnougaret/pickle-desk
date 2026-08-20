@@ -266,8 +266,14 @@
     const team = tournament.teams.find((item) => item.id === teamId);
     const pool = tournament.pools.find((item) => item.id === poolId);
     if (!team || !pool || team.divisionId !== pool.divisionId) { notify('Teams can only move within their division.'); return; }
+    if (tournament.poolMemberships.find((membership) => membership.teamId === teamId)?.poolId === poolId) return;
     const memberships = tournament.poolMemberships.filter((membership) => membership.teamId !== teamId);
     tournament = { ...tournament, poolMemberships: [...memberships, { teamId, poolId }] }; touch();
+    draggedTeamId = '';
+  }
+
+  function moveTeamFromControl(teamId: string, poolId: string): void {
+    moveTeam(teamId, poolId);
   }
 
   function selectedPoolDivisions(): Division[] {
@@ -520,7 +526,7 @@
     {#each pools as pool}
       <div class="pool-card" role="list" on:dragover|preventDefault on:drop={() => { if (draggedTeamId) moveTeam(draggedTeamId, pool.id); }}>
         <div class="pool-card-head"><div><h3>{pool.name}</h3></div><span class="pool-count">{teamsInPool(pool.id, tournament!.poolMemberships, tournament!.teams).length} teams</span></div>
-        <div class="pool-team-list">{#each teamsInPool(pool.id, tournament!.poolMemberships, tournament!.teams) as team}<div class="pool-team" role="listitem" draggable="true" on:dragstart={() => draggedTeamId = team.id}><span class="drag-handle">⋮⋮</span><span>{team.name}</span></div>{/each}</div>
+        <div class="pool-team-list">{#each teamsInPool(pool.id, tournament!.poolMemberships, tournament!.teams) as team}<div class="pool-team" role="listitem" draggable="true" on:dragstart={() => draggedTeamId = team.id} on:dragend={() => draggedTeamId = ''}><span class="drag-handle" aria-hidden="true">⋮⋮</span><span class="pool-team-copy">{team.name}</span><label class="pool-team-move"><span class="visually-hidden">Move {team.name} to pool</span><select value={pool.id} aria-label={`Move ${team.name} to pool`} on:change={(event) => moveTeamFromControl(team.id, (event.target as HTMLSelectElement).value)}>{#each pools as destination}<option value={destination.id}>{destination.name}</option>{/each}</select></label></div>{/each}</div>
         <div class="drop-hint">Drop a team here to move it</div>
       </div>
     {/each}
