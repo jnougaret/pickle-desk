@@ -1,4 +1,4 @@
-name: Release desktop installers
+name: Release Pickle Desk desktop installers
 
 on:
   push:
@@ -30,8 +30,8 @@ jobs:
           dmg_path="$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' ! -name 'rw.*' -print -quit)"
           test -n "$dmg_path"
           mkdir -p release/macos
-          cp "$dmg_path" release/macos/Tournament-Desk-macOS-universal.dmg
-          shasum -a 256 release/macos/Tournament-Desk-macOS-universal.dmg > release/macos/Tournament-Desk-macOS-universal.dmg.sha256
+          cp "$dmg_path" release/macos/Pickle-Desk-macOS-universal.dmg
+          shasum -a 256 release/macos/Pickle-Desk-macOS-universal.dmg > release/macos/Pickle-Desk-macOS-universal.dmg.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: macos-universal
@@ -43,6 +43,8 @@ jobs:
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
       WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
       WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
+      # This is the immutable Partner Center package identity reserved for the
+      # existing Store app. The visible display name is Pickle Desk.
       MSIX_PACKAGE_NAME: JoshuaNougaret.TournamentDesk
       MSIX_PUBLISHER: CN=2432AE4E-9706-4832-9DD7-B03ACFB13176
       MSIX_PUBLISHER_DISPLAY_NAME: Joshua Nougaret
@@ -103,22 +105,22 @@ jobs:
           set -euo pipefail
           mkdir -p release-assets
 
-          macos_dmg="$(find release-artifacts/macos-universal -type f -name 'Tournament-Desk-macOS-universal.dmg' -print -quit)"
+          macos_dmg="$(find release-artifacts/macos-universal -type f -name 'Pickle-Desk-macOS-universal.dmg' -print -quit)"
           test -n "$macos_dmg"
-          cp "$macos_dmg" release-assets/Tournament-Desk-macOS-universal.dmg
+          cp "$macos_dmg" release-assets/Pickle-Desk-macOS-universal.dmg
 
           windows_setup="$(find release-artifacts/windows-nsis -type f -name '*-setup.exe' -print -quit)"
           test -n "$windows_setup"
-          cp "$windows_setup" release-assets/Tournament-Desk-windows-setup.exe
+          cp "$windows_setup" release-assets/Pickle-Desk-windows-setup.exe
 
           msix_path="$(find release-artifacts -type f -name '*.msix' -print -quit || true)"
           if [ -n "$msix_path" ]; then
-            cp "$msix_path" release-assets/Tournament-Desk-windows.msix
+            cp "$msix_path" release-assets/Pickle-Desk-windows.msix
           fi
 
-          sha256sum release-assets/Tournament-Desk-macOS-universal.dmg release-assets/Tournament-Desk-windows-setup.exe > release-assets/SHA256SUMS.txt
-          if [ -f release-assets/Tournament-Desk-windows.msix ]; then
-            sha256sum release-assets/Tournament-Desk-windows.msix >> release-assets/SHA256SUMS.txt
+          sha256sum release-assets/Pickle-Desk-macOS-universal.dmg release-assets/Pickle-Desk-windows-setup.exe > release-assets/SHA256SUMS.txt
+          if [ -f release-assets/Pickle-Desk-windows.msix ]; then
+            sha256sum release-assets/Pickle-Desk-windows.msix >> release-assets/SHA256SUMS.txt
           fi
       - env:
           GH_TOKEN: ${{ github.token }}
@@ -127,5 +129,6 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "$GITHUB_REF_NAME" \
+            --notes "The Pickle Desk PWA for Android and iPadOS is available at https://jnougaret.github.io/pickle-desk/. The PWA is deployed through GitHub Pages rather than uploaded as a release binary." \
             --generate-notes \
             release-assets/*

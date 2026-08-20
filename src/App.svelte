@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import pickleToolsImage from '../pickle-tools.png';
+  import pickleDeskMascot from '../pickle-desk-mascot.png';
   import { newId } from './lib/tournament/id';
   import { generatePools, poolLabel, teamsInPool } from './lib/tournament/poolAssignment';
   import { generateRoundRobin } from './lib/tournament/roundRobin';
@@ -452,14 +452,14 @@
 </script>
 
 <svelte:head>
-  <title>{tournament ? tournament.name : 'Tournament'}</title>
+  <title>{tournament ? tournament.name : 'Pickle Desk'}</title>
 </svelte:head>
 
 {#if !tournament}
   <main class="home-shell">
 
     <section class="home-hero">
-      <div class="home-heading"><img class="home-logo" src={pickleToolsImage} alt="Pickle Desk mascot" /><h1>Pickle Desk</h1></div>
+      <div class="home-heading"><img class="home-logo" src={pickleDeskMascot} alt="Pickle Desk mascot" /><h1>Pickle Desk</h1></div>
       <div class="home-actions"><button class="button button-primary button-large" on:click={() => createOpen = true}>+ New tournament</button><label class="button button-secondary button-large">↥ Import from file<input type="file" accept=".tournament,.json,application/json" on:change={importTournamentFile} /></label></div>
     </section>
     <section class="recent-section">

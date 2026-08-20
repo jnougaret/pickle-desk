@@ -19,7 +19,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      BASE_PATH: /tournament-desk/
+      BASE_PATH: /pickle-desk/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

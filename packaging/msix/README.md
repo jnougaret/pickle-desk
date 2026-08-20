@@ -10,8 +10,12 @@ built from a Visual Studio packaging project.
 The package identity values must come from the app reservation in Partner
 Center. In particular, `MSIX_PACKAGE_NAME`, `MSIX_PUBLISHER`, and
 `MSIX_PUBLISHER_DISPLAY_NAME` must match Product identity exactly, including
-case and punctuation. The Store re-signs an MSIX package after certification;
-this script intentionally does not add a local signing certificate.
+case and punctuation. The visible product name is Pickle Desk, while the
+existing package identity and manifest application id remain
+`JoshuaNougaret.TournamentDesk` and `TournamentDesk` so Store updates preserve
+the installed app identity. The Store re-signs an MSIX package after
+certification; this script intentionally does not add a local signing
+certificate.
 
 After reserving the `Pickle Desk` product name, run:
 
