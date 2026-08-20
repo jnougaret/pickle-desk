@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102a2a" />
+    <meta name="description" content="Download Pickle Desk for Windows or macOS." />
+    <title>Pickle Desk downloads</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --background: #102a2a;
+        --surface: #173b3a;
+        --line: #35615d;
+        --text: #f4f1e8;
+        --muted: #c4d2c9;
+        --accent: #f3c969;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: linear-gradient(145deg, #102a2a 0%, #0d2022 100%);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        width: min(100% - 2rem, 48rem);
+        margin: 0 auto;
+        padding: clamp(3rem, 10vw, 7rem) 0;
+      }
+
+      a { color: var(--accent); }
+      a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+      .back { font-size: 0.9rem; }
+      h1 { margin: 2.5rem 0 0.75rem; font-size: clamp(2.25rem, 8vw, 4rem); line-height: 1; }
+      .intro { max-width: 36rem; color: var(--muted); font-size: 1.1rem; }
+
+      .downloads {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        gap: 1rem;
+        margin: 2.5rem 0;
+      }
+
+      .download-card {
+        display: flex;
+        min-height: 10rem;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1.5rem;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 1.35rem;
+      }
+
+      h2 { margin: 0 0 0.35rem; font-size: 1.25rem; }
+      .download-card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+      .download-link { font-weight: 600; }
+      .details { border-top: 1px solid var(--line); padding-top: 1.5rem; color: var(--muted); }
+      .details h2 { color: var(--text); }
+      .details li + li { margin-top: 0.5rem; }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">← Pickle Desk</a>
+      <h1>Pickle Desk downloads</h1>
+      <p class="intro">Offline-first tournament software for planning divisions, schedules, score sheets, results, standings, and playoffs.</p>
+
+      <section class="downloads" aria-label="Downloads">
+        <article class="download-card">
+          <div>
+            <h2>Windows</h2>
+            <p>Windows installer for current supported versions.</p>
+          </div>
+          <a class="download-link" href="https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe">Download for Windows ↗</a>
+        </article>
+        <article class="download-card">
+          <div>
+            <h2>macOS</h2>
+            <p>Universal DMG for Apple silicon and Intel Macs.</p>
+          </div>
+          <a class="download-link" href="https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-macOS-universal.dmg">Download for macOS ↗</a>
+        </article>
+      </section>
+
+      <section class="details">
+        <h2>Release details</h2>
+        <ul>
+          <li><a href="https://github.com/jnougaret/pickle-desk/releases/latest/download/SHA256SUMS.txt">Download SHA-256 checksums</a></li>
+          <li><a href="https://github.com/jnougaret/pickle-desk/releases/latest">Read the latest release notes</a></li>
+          <li>Unsigned builds may require a one-time confirmation in Windows SmartScreen or macOS Privacy &amp; Security.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

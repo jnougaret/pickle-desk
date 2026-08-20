@@ -67,7 +67,7 @@ submitted to the Store after certification.
 
 ## Public release downloads
 
-Send users to the [Pickle Desk downloads page](DOWNLOADS.md). It provides the live PWA entry point, stable Windows and macOS links to the latest GitHub Release, release notes, checksums, and the short installation guidance users may need for unsigned builds.
+Send users to the [Pickle Desk downloads page](https://pickledesk.joshuanougaret.com/downloads), with the source and full distribution guide in [DOWNLOADS.md](DOWNLOADS.md). It provides the live PWA entry point, stable Windows and macOS links to the latest GitHub Release, release notes, checksums, and the short installation guidance users may need for unsigned builds.
 
 The downloads page is the canonical public distribution guide. Do not replace its release links with binaries committed to the source repository.
 
