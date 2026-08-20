@@ -52,6 +52,18 @@ describe('standings', () => {
     expect(standings[0].rows[0].teamId).toBe(first[0].id);
     expect(standings[0].rows[0].wins).toBe(1);
   });
+
+  it('returns generated tiebreak draws so callers can persist them', () => {
+    const first = teams.slice(0, 4);
+    const generated = generatePools(division.id, first, 1, random);
+    const firstResult = calculateStandings(generated.pools, generated.memberships, first, [], {}, random);
+
+    expect(Object.keys(firstResult.draws).length).toBeGreaterThan(0);
+    const secondResult = calculateStandings(generated.pools, generated.memberships, first, [], firstResult.draws, () => {
+      throw new Error('saved tiebreak draws should be reused');
+    });
+    expect(secondResult.draws).toEqual(firstResult.draws);
+  });
 });
 
 describe('scheduling', () => {

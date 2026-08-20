@@ -55,6 +55,7 @@
   let resultDrafts: Record<string, { a: string; b: string }> = {};
   let resultErrors: Record<string, string> = {};
   let playoffDrafts: Record<string, { a: string; b: string }> = {};
+  let saveQueue: Promise<void> = Promise.resolve();
 
 
   $: allDivisionSelected = selectedDivisionId === 'all' && allDivisionViews.includes(view);
@@ -75,7 +76,7 @@
     && new Set(divisionPlayoffs.map((match) => match.roundNumber)).size === 1
     && divisionPlayoffs.every((match) => match.stage === 'Championship');
   $: currentStandings = tournament && currentDivision && divisionPools.length
-    ? calculateStandings(divisionPools, tournament.poolMemberships, tournament.teams, tournament.matches.filter((match) => match.divisionId === currentDivision!.id), tournament.standingsDraws).standings
+    ? calculateAndPersistStandings(divisionPools, tournament.poolMemberships, tournament.teams, tournament.matches.filter((match) => match.divisionId === currentDivision!.id), tournament.standingsDraws)
     : [];
   $: scheduleMatches = tournament && currentDivision
     ? workingMatches.filter((match) => match.scheduledStartTime).sort(sortMatches)
@@ -106,9 +107,31 @@
     if (!tournament) return;
     tournament = { ...tournament, updatedAt: new Date().toISOString() };
     const saved = tournament;
-    void repository.save(saved)
+    saveQueue = saveQueue
+      .then(() => repository.save(saved))
       .then(refreshTournaments)
       .catch((error) => notify(error instanceof Error ? error.message : 'Could not save this tournament.'));
+  }
+
+  function calculateAndPersistStandings(
+    pools: Pool[],
+    memberships: { poolId: string; teamId: string }[],
+    teams: Team[],
+    matches: Match[],
+    savedDraws: Record<string, number>
+  ): PoolStandings[] {
+    const result = calculateStandings(pools, memberships, teams, matches, savedDraws);
+    persistStandingsDraws(result.draws);
+    return result.standings;
+  }
+
+  function persistStandingsDraws(draws: Record<string, number>): void {
+    if (!tournament) return;
+    const currentKeys = Object.keys(tournament.standingsDraws);
+    const nextKeys = Object.keys(draws);
+    if (currentKeys.length === nextKeys.length && currentKeys.every((key) => tournament!.standingsDraws[key] === draws[key])) return;
+    tournament = { ...tournament, standingsDraws: { ...draws } };
+    touch();
   }
 
   function setWorkingDivision(id: string): void {
@@ -348,7 +371,7 @@
 
   function generateBracket(): void {
     if (!tournament || !currentDivision || !divisionPools.length) { notify('Generate pools and matches first.'); return; }
-    const standings = calculateStandings(divisionPools, tournament.poolMemberships, tournament.teams, divisionMatches, tournament.standingsDraws).standings;
+    const standings = calculateAndPersistStandings(divisionPools, tournament.poolMemberships, tournament.teams, divisionMatches, tournament.standingsDraws);
     try {
       const bracket = generatePlayoffBracket(currentDivision, standings, divisionTeams);
       tournament = { ...tournament, playoffMatches: [...tournament.playoffMatches.filter((match) => match.divisionId !== currentDivision!.id), ...bracket] }; touch(); notify('Playoff bracket created.');
