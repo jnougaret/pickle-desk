@@ -40,6 +40,9 @@
     </Application>
   </Applications>
   <Capabilities>
+    <!-- Tauri is packaged as a classic Win32 desktop app. Partner Center may
+         require Store approval for this restricted capability; removing it
+         would make the packaged desktop executable unable to launch. -->
     <rescap:Capability Name="runFullTrust" />
   </Capabilities>
 </Package>

@@ -58,8 +58,11 @@ The installed app contains the built frontend and SQLite plugin; it does not req
 The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. The Pages workflow in `.github/workflows/pages.yml` builds and deploys the third, browser-based PWA at `https://jnougaret.github.io/pickle-desk/`. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
 
 The Microsoft Store MSIX path is documented in `packaging/msix/README.md`. It
-wraps the x64 Tauri executable with a Store-compatible desktop manifest and
-uses the exact package identity values reserved in Partner Center. The
+wraps the x64 Tauri executable with a Store-compatible Windows 10/11 desktop
+manifest and uses the exact package identity values reserved in Partner
+Center. Partner Center's **Windows 10 packages** heading includes Windows 11;
+the authoritative target is `Windows.Desktop` with minimum version
+`10.0.19041.0`. The
 display name is Pickle Desk; the package identity and Tauri identifier retain
 their original compatibility values so installed legacy copies can upgrade in
 place and keep their data. Microsoft re-signs MSIX packages

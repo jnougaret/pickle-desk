@@ -35,7 +35,22 @@ if (config.bundle?.windows?.webviewInstallMode?.type !== 'offlineInstaller') {
   throw new Error('Windows installer must embed the offline WebView2 installer.');
 }
 
+const msixManifest = fs.readFileSync(path.join(root, 'packaging', 'msix', 'AppxManifest.xml'), 'utf8');
+const requiredMsixManifestValues = [
+  'ProcessorArchitecture="x64"',
+  'Name="Windows.Desktop"',
+  'MinVersion="10.0.19041.0"',
+  'MaxVersionTested="10.0.26100.0"',
+  'uap10:RuntimeBehavior="packagedClassicApp"',
+  'uap10:TrustLevel="mediumIL"',
+  '<rescap:Capability Name="runFullTrust" />'
+];
+const missingMsixManifestValues = requiredMsixManifestValues.filter((value) => !msixManifest.includes(value));
+if (missingMsixManifestValues.length) {
+  throw new Error(`MSIX manifest smoke check failed; missing: ${missingMsixManifestValues.join(', ')}`);
+}
+
 const css = fs.readFileSync(path.join(root, 'src/app.css'), 'utf8');
 if (/https?:\/\//.test(css)) throw new Error('Runtime CSS contains an external URL and is not offline-safe.');
 
-console.log('Tauri packaging smoke check passed: frontend, icons, migrations, targets, and offline CSS are present.');
+console.log('Tauri packaging smoke check passed: frontend, icons, migrations, targets, MSIX manifest, and offline CSS are present.');

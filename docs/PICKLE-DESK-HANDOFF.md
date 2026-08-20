@@ -57,6 +57,8 @@ They preserve existing browser data, desktop databases, imported files, service-
 ## External/account follow-ups
 
 - Re-check the public Microsoft Store page after the latest Partner Center submission has finished publishing; Partner Center state and the public page can lag each other.
+- The Partner Center package is a Windows desktop MSIX, not a Windows 10-only app: its package details are `Windows.Desktop`, `X64`, and minimum version `10.0.19041.0`, which covers Windows 11. In Partner Center, the **Windows 10 packages** heading is the platform label used for Windows 10/11 desktop packages; the **Windows 10/11 Desktop** device-family availability box must be selected for new customers.
+- The package intentionally declares the restricted `runFullTrust` capability because the Tauri/Win32 executable is a packaged classic desktop app. The warning requires Store approval and an explanation in Submission Options; it is not a reason to remove the capability. If a submission is already in certification and the Packages page is read-only, leave it in flight and apply any device-family correction in the next editable submission.
 - Configure and verify Windows Authenticode and Apple signing/notarization secrets before calling a release trusted for broad distribution.
 - Before the next release, decide whether the Tauri bundle publisher metadata should remain `Joshua Nougaret` or be changed to `Driftwood Pickleball`; this is separate from the immutable Microsoft Store publisher identity.
 
