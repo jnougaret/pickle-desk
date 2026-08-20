@@ -2,6 +2,8 @@
 
 This document covers the Windows desktop version only. Pickle Desk also ships as a macOS desktop app and as an installable browser PWA for Android and iPadOS; direct users to [DOWNLOADS.md](DOWNLOADS.md) when they need to choose between the three versions.
 
+The repository migration and final cross-platform release contract are recorded in the [Pickle Desk project handoff](docs/PICKLE-DESK-HANDOFF.md).
+
 This document contains a ready-to-run prompt for a Windows machine with the repository checked out. It builds the NSIS installer, validates the application, and verifies that the installed app works offline. The Microsoft Store MSIX flow is documented separately in `packaging/msix/README.md`.
 
 ## Prerequisites

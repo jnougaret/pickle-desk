@@ -8,6 +8,8 @@ Choose the version that matches the device you will use during the tournament:
 - [Download the macOS desktop app](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-macOS-universal.dmg)
 - [View the latest release notes and checksums](https://github.com/jnougaret/pickle-desk/releases/latest)
 
+This is the canonical public distribution page for Pickle Desk. The PWA is delivered by GitHub Pages; desktop installers are delivered through GitHub Releases and the Microsoft Store.
+
 ## PWA for Android and iPadOS
 
 The PWA is the mobile version of Pickle Desk. It runs from the official HTTPS GitHub Pages site and can continue to launch after the app shell has been cached:

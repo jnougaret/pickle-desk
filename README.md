@@ -2,6 +2,8 @@
 
 Offline-first pickleball tournament operations desk built with Svelte and TypeScript.
 
+The project has completed its migration from Tournament Desk to Pickle Desk. The canonical source is [jnougaret/pickle-desk](https://github.com/jnougaret/pickle-desk) on `main`; see the [project handoff](docs/PICKLE-DESK-HANDOFF.md) for the final distribution, compatibility, QA, and follow-up record.
+
 ## Choose your app version
 
 Pickle Desk is available in three app versions. They share the same tournament workflows and `.tournament` backup format, but each keeps data in its own local storage:
@@ -66,6 +68,8 @@ submitted to the Store after certification.
 ## Public release downloads
 
 Send users to the [Pickle Desk downloads page](DOWNLOADS.md). It provides the live PWA entry point, stable Windows and macOS links to the latest GitHub Release, release notes, checksums, and the short installation guidance users may need for unsigned builds.
+
+The downloads page is the canonical public distribution guide. Do not replace its release links with binaries committed to the source repository.
 
 ## V1 workflow
 

@@ -4,6 +4,8 @@
 
 The PWA is now a shipped third version of Pickle Desk. GitHub Pages deploys the browser build at [jnougaret.github.io/pickle-desk](https://jnougaret.github.io/pickle-desk/) from `main`. The PWA is the mobile distribution for Android and iPadOS; Windows and macOS remain native desktop distributions.
 
+For the complete migration record, release contract, compatibility identifiers, and carried-forward QA limits, see the [Pickle Desk project handoff](PICKLE-DESK-HANDOFF.md).
+
 ## Objective
 
 Maintain Pickle Desk as an installable, offline-capable web app for Android and iPadOS without changing the tournament engine or weakening the existing Windows NSIS/MSIX and macOS DMG packaging paths.

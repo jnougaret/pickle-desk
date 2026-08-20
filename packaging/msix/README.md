@@ -2,13 +2,15 @@
 
 This is a Windows desktop distribution of Pickle Desk. The other two app versions are the universal macOS desktop app and the installable browser PWA for Android/iPadOS; use the repository [downloads page](../../DOWNLOADS.md) to direct users to the appropriate version.
 
+The cross-platform migration record and the distinction between visible branding and immutable Store identity are in the [Pickle Desk project handoff](../../docs/PICKLE-DESK-HANDOFF.md).
+
 Pickle Desk is a Tauri Win32 desktop app. The Store package wraps the
 release executable in a manually authored MSIX manifest, which is the command-
 line packaging flow documented by Microsoft for desktop apps that are not
 built from a Visual Studio packaging project.
 
-The package identity values must come from the app reservation in Partner
-Center. In particular, `MSIX_PACKAGE_NAME`, `MSIX_PUBLISHER`, and
+The `Pickle Desk` product name is reserved in Partner Center. The package
+identity values must come from that app reservation. In particular, `MSIX_PACKAGE_NAME`, `MSIX_PUBLISHER`, and
 `MSIX_PUBLISHER_DISPLAY_NAME` must match Product identity exactly, including
 case and punctuation. The visible product name is Pickle Desk, while the
 existing package identity and manifest application id remain

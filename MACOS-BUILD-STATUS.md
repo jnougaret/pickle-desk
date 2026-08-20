@@ -2,7 +2,9 @@
 
 This document covers the macOS desktop version. The installable browser PWA for Android and iPadOS is deployed separately through GitHub Pages; see [DOWNLOADS.md](DOWNLOADS.md) for the three-version distribution guide.
 
-Build date: 2026-08-18
+See the [Pickle Desk project handoff](docs/PICKLE-DESK-HANDOFF.md) for the canonical repository, release, compatibility, and QA status.
+
+Latest recorded local build: 2026-08-18
 
 ## Produced locally
 
