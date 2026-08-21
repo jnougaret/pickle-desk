@@ -4,7 +4,8 @@ import {
   exportTournament,
   parseTournamentJson,
   TOURNAMENT_FILE_FORMAT,
-  TOURNAMENT_SCHEMA_VERSION
+  TOURNAMENT_SCHEMA_VERSION,
+  TOURNAMENT_STORAGE_FORMAT
 } from './fileFormat';
 import type { Tournament } from './types';
 
@@ -48,9 +49,9 @@ describe('versioned tournament files', () => {
     expect(parseTournamentJson(JSON.stringify(parsed))).toEqual(source);
   });
 
-  it('continues to read exports created with the former app name', async () => {
+  it('continues to read browser envelopes created with the current app name', async () => {
     const source = tournament();
-    const legacy = { ...JSON.parse(await exportTournament(source).text()), format: 'tournament-desk' };
+    const legacy = { ...JSON.parse(await exportTournament(source).text()), format: TOURNAMENT_STORAGE_FORMAT };
     expect(parseTournamentJson(JSON.stringify(legacy))).toEqual(source);
   });
 
@@ -84,7 +85,7 @@ describe('browser tournament repository contract', () => {
     await repository.delete(source.id);
     expect(await repository.list()).toEqual([]);
     expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({
-      format: TOURNAMENT_FILE_FORMAT,
+      format: TOURNAMENT_STORAGE_FORMAT,
       schemaVersion: TOURNAMENT_SCHEMA_VERSION,
       tournaments: []
     });
@@ -98,7 +99,7 @@ describe('browser tournament repository contract', () => {
     expect(await repository.list()).toEqual([source]);
     await repository.save({ ...source, name: 'Migrated Classic' });
     expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({
-      format: TOURNAMENT_FILE_FORMAT,
+      format: TOURNAMENT_STORAGE_FORMAT,
       schemaVersion: TOURNAMENT_SCHEMA_VERSION
     });
   });
@@ -112,7 +113,7 @@ describe('browser tournament repository contract', () => {
     await repository.save({ ...source, name: 'Renamed Classic' });
     expect(storage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
     expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({
-      format: TOURNAMENT_FILE_FORMAT,
+      format: TOURNAMENT_STORAGE_FORMAT,
       schemaVersion: TOURNAMENT_SCHEMA_VERSION
     });
   });

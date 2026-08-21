@@ -2,7 +2,7 @@
 
 Choose the version that matches the device you will use during the tournament:
 
-- [Open Pickle Desk PWA for Android and iPadOS](https://pickledesk.joshuanougaret.com/)
+- [Open the App](https://pickledesk.joshuanougaret.com/)
 - [Download the Windows desktop app](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe)
 - [Install the Windows desktop app from Microsoft Store](https://apps.microsoft.com/detail/9P8ST763N7F3)
 - [Download the macOS desktop app](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-macOS-universal.dmg)

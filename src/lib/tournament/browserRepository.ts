@@ -1,4 +1,4 @@
-import { parseTournamentJson, TOURNAMENT_FILE_FORMAT, TOURNAMENT_SCHEMA_VERSION, validateTournament } from './fileFormat';
+import { parseTournamentJson, TOURNAMENT_SCHEMA_VERSION, TOURNAMENT_STORAGE_FORMAT, validateTournament } from './fileFormat';
 import type { Tournament } from './types';
 import type { TournamentRepository } from './repository';
 
@@ -12,7 +12,7 @@ export interface StorageLike {
 }
 
 interface BrowserStorageEnvelope {
-  format: typeof TOURNAMENT_FILE_FORMAT;
+  format: typeof TOURNAMENT_STORAGE_FORMAT;
   schemaVersion: typeof TOURNAMENT_SCHEMA_VERSION;
   tournaments: Tournament[];
 }
@@ -37,7 +37,7 @@ function parseStoredTournaments(raw: string): Tournament[] {
 
   if (typeof parsed !== 'object' || parsed === null) throw new Error('Saved tournament data has an invalid format.');
   const envelope = parsed as Partial<BrowserStorageEnvelope>;
-  if (envelope.format !== TOURNAMENT_FILE_FORMAT || envelope.schemaVersion !== TOURNAMENT_SCHEMA_VERSION || !Array.isArray(envelope.tournaments)) {
+  if (envelope.format !== TOURNAMENT_STORAGE_FORMAT || envelope.schemaVersion !== TOURNAMENT_SCHEMA_VERSION || !Array.isArray(envelope.tournaments)) {
     throw new Error('Saved tournament data uses an unsupported schema. Export a backup before continuing.');
   }
   return envelope.tournaments.map(validateTournament);
@@ -65,7 +65,7 @@ export class BrowserTournamentRepository implements TournamentRepository {
     const valid = validateTournament(tournament);
     const tournaments = (await this.list()).filter((item) => item.id !== valid.id);
     const envelope: BrowserStorageEnvelope = {
-      format: TOURNAMENT_FILE_FORMAT,
+      format: TOURNAMENT_STORAGE_FORMAT,
       schemaVersion: TOURNAMENT_SCHEMA_VERSION,
       tournaments: [valid, ...tournaments]
     };
@@ -77,7 +77,7 @@ export class BrowserTournamentRepository implements TournamentRepository {
     if (!this.storage) return;
     const tournaments = (await this.list()).filter((item) => item.id !== id);
     const envelope: BrowserStorageEnvelope = {
-      format: TOURNAMENT_FILE_FORMAT,
+      format: TOURNAMENT_STORAGE_FORMAT,
       schemaVersion: TOURNAMENT_SCHEMA_VERSION,
       tournaments
     };

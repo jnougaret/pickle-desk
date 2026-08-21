@@ -34,6 +34,9 @@ if (!config.plugins?.sql?.preload?.includes('sqlite:tournament-desk.db')) {
 if (config.bundle?.windows?.webviewInstallMode?.type !== 'offlineInstaller') {
   throw new Error('Windows installer must embed the offline WebView2 installer.');
 }
+if (config.bundle?.windows?.nsis?.installerIcon !== 'icons/icon.ico' || config.bundle?.windows?.nsis?.uninstallerIcon !== 'icons/icon.ico') {
+  throw new Error('Windows NSIS installer and uninstaller must use the Pickle Desk icon.');
+}
 
 const msixManifest = fs.readFileSync(path.join(root, 'packaging', 'msix', 'AppxManifest.xml'), 'utf8');
 const requiredMsixManifestValues = [

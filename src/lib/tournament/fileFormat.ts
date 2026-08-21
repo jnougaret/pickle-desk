@@ -1,7 +1,10 @@
 import type { Tournament } from './types';
 
-export const TOURNAMENT_FILE_FORMAT = 'pickle-desk';
-const LEGACY_TOURNAMENT_FILE_FORMAT = 'tournament-desk';
+// Keep the portable file marker stable so files exported by the PWA remain
+// readable by the already-shipped v0.1.0 Windows Store app. Browser storage
+// uses the current Pickle Desk marker below and the parser accepts both.
+export const TOURNAMENT_FILE_FORMAT = 'tournament-desk';
+export const TOURNAMENT_STORAGE_FORMAT = 'pickle-desk';
 export const TOURNAMENT_SCHEMA_VERSION = 1;
 
 export interface TournamentFileEnvelope {
@@ -79,7 +82,7 @@ export function parseTournamentJson(text: string): Tournament {
   }
 
   if (!isRecord(parsed)) throw new Error('That file is not a valid tournament export.');
-  if (parsed.format === TOURNAMENT_FILE_FORMAT || parsed.format === LEGACY_TOURNAMENT_FILE_FORMAT) {
+  if (parsed.format === TOURNAMENT_FILE_FORMAT || parsed.format === TOURNAMENT_STORAGE_FORMAT) {
     if (parsed.schemaVersion !== TOURNAMENT_SCHEMA_VERSION) {
       throw new Error(`Unsupported tournament export schema version: ${String(parsed.schemaVersion)}.`);
     }
