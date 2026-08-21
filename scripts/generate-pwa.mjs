@@ -106,10 +106,33 @@ function offlineAppShell() {
   });
 }
 
+function withoutRedirect(response) {
+  if (!response || response.type === 'opaqueredirect') return undefined;
+  if (!response.redirected) return response;
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+}
+
+async function cacheResponse(cache, request, response) {
+  const safeResponse = withoutRedirect(response);
+  if (!safeResponse || !safeResponse.ok) return;
+  await cache.put(request, safeResponse);
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then((cache) => Promise.all(PRECACHE_URLS.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          await cacheResponse(cache, url, response);
+        } catch {
+          // A single unavailable asset must not block the embedded fallback.
+        }
+      })))
       .catch(() => undefined)
       .then(() => self.skipWaiting())
   );
@@ -135,23 +158,25 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined);
-          return response;
+          const safeResponse = withoutRedirect(response);
+          if (!safeResponse) throw new Error('Navigation response cannot be served by the service worker.');
+          void caches.open(CACHE_NAME).then((cache) => cacheResponse(cache, request, safeResponse.clone())).catch(() => undefined);
+          return safeResponse;
         })
         .catch(() => caches.match(request).catch(() => undefined))
-        .then((cached) => cached || caches.match(INDEX_URL).catch(() => undefined))
-        .then((cached) => cached || offlineAppShell())
+        .then((cached) => withoutRedirect(cached) || caches.match(INDEX_URL).catch(() => undefined))
+        .then((cached) => withoutRedirect(cached) || offlineAppShell())
     );
     return;
   }
 
   event.respondWith(
     caches.match(request).catch(() => undefined)
-      .then((cached) => cached || fetch(request).then((response) => {
-        const copy = response.clone();
-        void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined);
-        return response;
+      .then((cached) => withoutRedirect(cached) || fetch(request).then((response) => {
+        const safeResponse = withoutRedirect(response);
+        if (!safeResponse) throw new Error('Asset response cannot be served by the service worker.');
+        void caches.open(CACHE_NAME).then((cache) => cacheResponse(cache, request, safeResponse.clone())).catch(() => undefined);
+        return safeResponse;
       }))
       .catch(() => embeddedResponse(request.url) || offlineAppShell())
   );

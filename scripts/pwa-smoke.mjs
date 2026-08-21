@@ -62,8 +62,11 @@ for (const url of urls) {
     throw new Error(`Precached file is missing: ${url}`);
   }
 }
-for (const required of ['CACHE_NAME = \'pickle-desk-', 'LEGACY_CACHE_PREFIX', 'network-first', 'caches.match(request)', 'caches.match(INDEX_URL)']) {
+for (const required of ['CACHE_NAME = \'pickle-desk-', 'LEGACY_CACHE_PREFIX', 'network-first', 'withoutRedirect(response)', 'cacheResponse(cache, request, response)', 'caches.match(request)', 'caches.match(INDEX_URL)']) {
   if (!serviceWorker.includes(required)) throw new Error(`Service worker behavior is missing ${required}.`);
+}
+if (serviceWorker.includes('cache.addAll(PRECACHE_URLS)')) {
+  throw new Error('Service worker must not precache responses that may retain redirects.');
 }
 for (const required of ['const EMBEDDED_ASSETS =', 'function embeddedResponse(url)', 'function offlineAppShell()', 'embeddedResponse(request.url)', '.catch(() => undefined)']) {
   if (!serviceWorker.includes(required)) throw new Error(`Service worker embedded offline fallback is missing ${required}.`);
@@ -122,6 +125,66 @@ async function assertCacheIndependentFallback() {
   }
 }
 
+async function assertRedirectResponsesAreNormalized() {
+  const listeners = new Map();
+  const origin = 'https://pwa-redirect-smoke.example';
+  const stored = new Map();
+  class TestResponse {
+    constructor(body, options = {}) {
+      this.body = body;
+      this.status = options.status ?? 200;
+      this.statusText = options.statusText ?? '';
+      this.headers = options.headers ?? {};
+      this.redirected = options.redirected ?? false;
+      this.type = options.type ?? 'basic';
+      this.ok = this.status >= 200 && this.status < 300;
+    }
+
+    clone() {
+      return new TestResponse(this.body, {
+        status: this.status,
+        statusText: this.statusText,
+        headers: this.headers,
+        redirected: this.redirected,
+        type: this.type
+      });
+    }
+  }
+  const cache = {
+    put: async (request, response) => stored.set(new URL(typeof request === 'string' ? request : request.url, origin).href, response),
+    match: async (request) => stored.get(new URL(typeof request === 'string' ? request : request.url, origin).href),
+    keys: async () => [],
+    delete: async () => false
+  };
+  const scope = vm.createContext({
+    URL,
+    Request: class TestRequest { constructor(url) { this.url = url; } },
+    Response: TestResponse,
+    Uint8Array,
+    atob,
+    caches: { open: async () => cache, keys: async () => [] },
+    fetch: async (url) => new TestResponse('<div id="app"></div>', { redirected: url.endsWith('index.html') }),
+    console,
+    self: {
+      location: new URL(`${origin}${basePath}`),
+      addEventListener: (type, handler) => listeners.set(type, handler),
+      skipWaiting: async () => {},
+      clients: { claim: async () => {} }
+    }
+  });
+  vm.runInContext(serviceWorker, scope, { filename: 'dist/sw.js' });
+  const installHandler = listeners.get('install');
+  if (!installHandler) throw new Error('Service worker install handler was not registered.');
+  const waits = [];
+  installHandler({ waitUntil: (promise) => waits.push(promise) });
+  await Promise.all(waits);
+  const cachedIndex = stored.get(`${origin}${basePath}index.html`);
+  if (!cachedIndex || cachedIndex.redirected || !cachedIndex.ok) {
+    throw new Error('Redirected precache responses were not normalized.');
+  }
+}
+
 await assertCacheIndependentFallback();
+await assertRedirectResponsesAreNormalized();
 
 console.log(`PWA smoke check passed: standalone manifest, 192/512 icons, ${urls.length} precached files, and executable cache-independent offline fallback.`);
