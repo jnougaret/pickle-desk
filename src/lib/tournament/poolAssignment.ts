@@ -38,3 +38,7 @@ export function teamsInPool(poolId: string, memberships: PoolMembership[], teams
   const teamIds = new Set(memberships.filter((m) => m.poolId === poolId).map((m) => m.teamId));
   return teams.filter((team) => teamIds.has(team.id));
 }
+
+export function hasPoolsForDivisions(divisionIds: string[], pools: Pool[]): boolean {
+  return divisionIds.length > 0 && divisionIds.every((divisionId) => pools.some((pool) => pool.divisionId === divisionId));
+}

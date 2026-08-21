@@ -82,6 +82,38 @@ describe('scheduling', () => {
       expect(a.scheduledStartTime).not.toBe(b.scheduledStartTime);
     }
   });
+
+  it('schedules matches when a division has one pool', () => {
+    const onePoolDivision = { ...division, poolCount: 1 };
+    const onePoolTeams = teams.slice(0, 4);
+    const generated = generatePools(onePoolDivision.id, onePoolTeams, 1, random);
+    const matches: Match[] = generated.pools.flatMap((pool) => generateRoundRobin(
+      onePoolTeams,
+      onePoolDivision.poolRoundCount,
+      random
+    ).flatMap((round) => round.pairings.map((pairing) => ({
+      id: `${pool.id}-${round.roundNumber}-${pairing.teamAId}`,
+      divisionId: onePoolDivision.id,
+      matchType: 'pool' as const,
+      poolId: pool.id,
+      roundNumber: round.roundNumber,
+      ...pairing,
+      status: 'scheduled' as const
+    }))));
+    const tournament = {
+      ...tournamentWithPoolMatches(),
+      divisions: [onePoolDivision],
+      teams: onePoolTeams,
+      pools: generated.pools,
+      poolMemberships: generated.memberships,
+      matches
+    };
+
+    const result = generateSchedule(tournament);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.matches.every((match) => match.scheduledStartTime)).toBe(true);
+  });
 });
 
 describe('playoffs', () => {
