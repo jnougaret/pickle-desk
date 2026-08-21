@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import pickleDeskMascot from '../pickle-desk-mascot.png';
   import { newId } from './lib/tournament/id';
-  import { generatePools, hasPoolsForDivisions, poolLabel, teamsInPool } from './lib/tournament/poolAssignment';
+  import { generatePools, hasPoolMatchesForDivisions, hasPoolsForDivisions, poolLabel, teamsInPool } from './lib/tournament/poolAssignment';
   import { generateRoundRobin } from './lib/tournament/roundRobin';
   import { calculateStandings, type PoolStandings, type StandingRow } from './lib/tournament/standings';
   import { generateSchedule } from './lib/tournament/scheduler';
@@ -68,6 +68,7 @@
   $: workingMatches = tournament && allDivisionSelected ? tournament.matches : divisionMatches;
   $: scheduleDivisionIds = tournament && allDivisionSelected ? tournament.divisions.map((division) => division.id) : currentDivision ? [currentDivision.id] : [];
   $: schedulePoolsGenerated = tournament ? hasPoolsForDivisions(scheduleDivisionIds, tournament.pools) : false;
+  $: scheduleMatchesGenerated = tournament ? hasPoolMatchesForDivisions(scheduleDivisionIds, tournament.matches) : false;
   $: divisionPlayoffs = tournament && currentDivision ? tournament.playoffMatches.filter((match) => match.divisionId === currentDivision!.id) : [];
   $: openingPlayoffMatches = divisionPlayoffs.filter((match) => match.stage === 'Opening Round').sort((a, b) => a.bracketPosition - b.bracketPosition);
   $: quarterfinalPlayoffMatches = divisionPlayoffs.filter((match) => match.stage === 'Quarterfinals').sort((a, b) => a.bracketPosition - b.bracketPosition);
@@ -345,12 +346,8 @@
     } catch (error) { notify(error instanceof Error ? error.message : 'Could not generate pools.'); }
   }
 
-  function generateMatches(): void {
-    if (!tournament) return;
-    const divisions = selectedPoolDivisions();
-    if (!divisions.length) { notify('Generate pools first.'); return; }
-    const missingPools = divisions.filter((division) => poolsForDivision(division.id).length === 0);
-    if (missingPools.length) { notify(allDivisionSelected ? 'Generate pools for all divisions first.' : 'Generate pools first.'); return; }
+  function createPoolMatches(divisions: Division[]): Match[] {
+    if (!tournament) return [];
     const generated: Match[] = [];
     for (const division of divisions) {
       for (const pool of poolsForDivision(division.id)) {
@@ -360,12 +357,47 @@
         for (const round of rounds) for (const pairing of round.pairings) generated.push({ id: newId('match'), divisionId: division.id, matchType: 'pool', poolId: pool.id, roundNumber: round.roundNumber, teamAId: pairing.teamAId, teamBId: pairing.teamBId, status: 'scheduled' });
       }
     }
+    return generated;
+  }
+
+  function saveGeneratedMatches(divisions: Division[], generated: Match[]): void {
+    if (!tournament) return;
     const divisionIds = new Set(divisions.map((division) => division.id));
-    tournament = { ...tournament, matches: [...tournament.matches.filter((match) => !divisionIds.has(match.divisionId)), ...generated], playoffMatches: tournament.playoffMatches.filter((match) => !divisionIds.has(match.divisionId)) }; touch(); notify(`${generated.length} pool matches generated${allDivisionSelected ? ` for ${divisions.length} divisions.` : '.'}`);
+    tournament = { ...tournament, matches: [...tournament.matches.filter((match) => !divisionIds.has(match.divisionId)), ...generated], playoffMatches: tournament.playoffMatches.filter((match) => !divisionIds.has(match.divisionId)) };
+    touch();
+  }
+
+  function generateMatches(): void {
+    if (!tournament) return;
+    const divisions = selectedPoolDivisions();
+    if (!divisions.length) { notify('Generate pools first.'); return; }
+    const missingPools = divisions.filter((division) => poolsForDivision(division.id).length === 0);
+    if (missingPools.length) { notify(allDivisionSelected ? 'Generate pools for all divisions first.' : 'Generate pools first.'); return; }
+    const generated = createPoolMatches(divisions);
+    saveGeneratedMatches(divisions, generated);
+    notify(`${generated.length} pool matches generated${allDivisionSelected ? ` for ${divisions.length} divisions.` : '.'}`);
+  }
+
+  function ensureScheduleMatches(): boolean {
+    if (!tournament) return false;
+    const divisions = selectedPoolDivisions();
+    if (!divisions.length) { notify('Generate pools first.'); return false; }
+    const missingPools = divisions.filter((division) => poolsForDivision(division.id).length === 0);
+    if (missingPools.length) { notify(allDivisionSelected ? 'Generate pools for all divisions first.' : 'Generate pools first.'); return false; }
+    const missingMatches = divisions.filter((division) => !tournament!.matches.some((match) => match.divisionId === division.id));
+    if (!missingMatches.length) return true;
+    const generated = createPoolMatches(missingMatches);
+    const unableToGenerate = missingMatches.filter((division) => !generated.some((match) => match.divisionId === division.id));
+    if (unableToGenerate.length) {
+      notify(`Add at least two teams to ${unableToGenerate[0].name} before generating matches.`);
+      return false;
+    }
+    saveGeneratedMatches(missingMatches, generated);
+    return true;
   }
 
   function generateTournamentSchedule(): void {
-    if (!tournament) return;
+    if (!tournament || !ensureScheduleMatches()) return;
     const result = generateSchedule(tournament);
     if (result.errors.length) { notify(result.errors[0].message); return; }
     tournament = { ...tournament, matches: result.matches }; touch(); navigate('schedule'); notify('Pool schedule generated.');
@@ -520,7 +552,7 @@
       {:else if view === 'pools'}
         <section class="content-section pools-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={regeneratePools}>⤨ {allDivisionSelected ? (poolViewPools.length ? 'Re-randomize all' : 'Generate all pools') : (poolViewPools.length ? 'Re-randomize' : 'Generate pools')}</button><button class="button button-primary" disabled={!poolViewPools.length || (allDivisionSelected && poolViewDivisions.some((division) => poolsForDivision(division.id).length === 0))} on:click={generateMatches}>{allDivisionSelected ? 'Generate all matches →' : 'Generate matches →'}</button></div></div>{#if currentDivision}{#if poolViewPools.length}{#if allDivisionSelected}<div class="pool-division-list">{#each poolViewDivisions as division}{#if poolsForDivision(division.id).length}<section class="pool-division"><div class="pool-division-heading"><h3>{division.name}</h3><span>{tournament.teams.filter((team) => team.divisionId === division.id).length} teams</span></div>{@render PoolGrid(poolsForDivision(division.id))}</section>{/if}{/each}</div>{:else}{@render PoolGrid(poolViewPools)}{/if}{:else}<div class="empty-panel pool-empty-panel"><div class="empty-icon">◈</div><h3>Ready to build pools</h3><button class="button button-primary" on:click={regeneratePools}>{allDivisionSelected ? 'Generate all pools' : 'Generate pools'}</button></div>{/if}{:else}<div class="empty-panel"><div class="empty-icon">◈</div><h3>Add a division first</h3><button class="button button-secondary" on:click={() => navigate('divisions')}>Go to divisions</button></div>{/if}</section>
       {:else if view === 'schedule'}
-        <section class="content-section schedule-view"><div class="section-intro section-intro-actions"><div class="toolbar"><label class="court-control">Courts <input type="number" min="1" bind:value={tournament.courtCount} on:change={touch} /></label><button class="button button-primary" on:click={generateTournamentSchedule}>Generate schedule</button></div></div>{#if scheduleMatches.length}<div class="schedule-list">{#each scheduleMatches as match, index}<div class="schedule-row"><div class="schedule-time"><strong>{displayTime(match.scheduledStartTime)}</strong>{#if index === 0 || displayTime(scheduleMatches[index - 1].scheduledStartTime) !== displayTime(match.scheduledStartTime)}<span>{new Date(match.scheduledStartTime!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>{/if}</div><div class="court-badge">C{match.courtNumber}</div><div class="schedule-detail"><strong>{divisionName(match.divisionId)} <span>·</span> {matchLabel(match)}</strong><span>{teamName(match.teamAId)} <b>vs</b> {teamName(match.teamBId)}</span></div><span class:complete={match.status === 'completed'} class="status-pill">{match.status === 'completed' ? 'Completed' : 'Scheduled'}</span></div>{/each}</div>{:else}<div class="empty-panel"><div class="empty-icon">◷</div><h3>No schedule yet</h3>{#if schedulePoolsGenerated}<p>Now that pools have been assigned for {allDivisionSelected ? 'all divisions' : 'this division'}, create a fixed-court schedule.</p><button class="button button-primary" on:click={generateTournamentSchedule}>Generate schedule</button>{:else}<p>Generate pool matches first, then create a fixed-court schedule.</p><button class="button button-primary" on:click={() => navigate('pools')}>Go to pools</button>{/if}</div>{/if}</section>
+        <section class="content-section schedule-view"><div class="section-intro section-intro-actions"><div class="toolbar"><label class="court-control">Courts <input type="number" min="1" bind:value={tournament.courtCount} on:change={touch} /></label><button class="button button-primary" on:click={generateTournamentSchedule}>Generate schedule</button></div></div>{#if scheduleMatches.length}<div class="schedule-list">{#each scheduleMatches as match, index}<div class="schedule-row"><div class="schedule-time"><strong>{displayTime(match.scheduledStartTime)}</strong>{#if index === 0 || displayTime(scheduleMatches[index - 1].scheduledStartTime) !== displayTime(match.scheduledStartTime)}<span>{new Date(match.scheduledStartTime!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>{/if}</div><div class="court-badge">C{match.courtNumber}</div><div class="schedule-detail"><strong>{divisionName(match.divisionId)} <span>·</span> {matchLabel(match)}</strong><span>{teamName(match.teamAId)} <b>vs</b> {teamName(match.teamBId)}</span></div><span class:complete={match.status === 'completed'} class="status-pill">{match.status === 'completed' ? 'Completed' : 'Scheduled'}</span></div>{/each}</div>{:else}<div class="empty-panel"><div class="empty-icon">◷</div><h3>No schedule yet</h3>{#if !schedulePoolsGenerated}<p>Generate pool matches first, then create a fixed-court schedule.</p><button class="button button-primary" on:click={() => navigate('pools')}>Go to pools</button>{:else if !scheduleMatchesGenerated}<p>Now that pools have been assigned for {allDivisionSelected ? 'all divisions' : 'this division'}, it's time to generate matches.</p><button class="button button-primary" on:click={generateTournamentSchedule}>Generate schedule</button>{:else}<p>Now that pools have been assigned for {allDivisionSelected ? 'all divisions' : 'this division'}, create a fixed-court schedule.</p><button class="button button-primary" on:click={generateTournamentSchedule}>Generate schedule</button>{/if}</div>{/if}</section>
       {:else if view === 'sheets'}
         <section class="content-section print-screen sheets-view"><div class="section-intro section-intro-actions no-print"><button class="button button-primary" on:click={printSheets}>▤ Print {sheetMatches.length} sheets</button></div><div class="filter-bar no-print"><label>Round <select bind:value={sheetRound}><option value="all">All rounds</option>{#each allRounds(workingMatches) as round}<option value={round}>Round {round}</option>{/each}</select></label><span class="muted">{sheetMatches.length} sheets ready</span></div>{#if sheetMatches.length}<div class="sheet-preview">{#each sheetMatches as match}<article class="score-sheet"><div class="sheet-top"><span class="sheet-court">Court {match.courtNumber}</span><strong class="sheet-time">{displayTime(match.scheduledStartTime)}</strong></div><div class="sheet-divider" aria-hidden="true"></div><div class="sheet-teams"><div class="sheet-team-row"><span class="sheet-team-name">{teamName(match.teamAId)}</span><span class="sheet-score-entry" aria-hidden="true">____</span></div><span class="sheet-versus">vs.</span><div class="sheet-team-row"><span class="sheet-team-name">{teamName(match.teamBId)}</span><span class="sheet-score-entry" aria-hidden="true">____</span></div></div><div class="sheet-divider" aria-hidden="true"></div><div class="sheet-meta">{divisionName(match.divisionId)} — {matchLabel(match)}</div></article>{/each}</div>{:else}<div class="empty-panel no-print"><div class="empty-icon">▤</div><h3>No scheduled matches</h3><p>Generate the schedule to create printable score sheets.</p></div>{/if}</section>
       {:else if view === 'results'}

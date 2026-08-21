@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { generatePools, hasPoolsForDivisions } from './poolAssignment';
-import type { Pool, Team } from './types';
+import { generatePools, hasPoolMatchesForDivisions, hasPoolsForDivisions } from './poolAssignment';
+import type { Match, Pool, Team } from './types';
 
 const teams: Team[] = [
   { id: 'team-1', divisionId: 'division-1', name: 'Team 1' },
@@ -25,5 +25,16 @@ describe('pool generation state', () => {
     expect(hasPoolsForDivisions(['division-1', 'division-2'], pools)).toBe(true);
     expect(hasPoolsForDivisions(['division-1', 'division-3'], pools)).toBe(false);
     expect(hasPoolsForDivisions([], pools)).toBe(false);
+  });
+
+  it('recognizes pool matches for each selected division', () => {
+    const matches: Match[] = [{
+      id: 'match-1', divisionId: 'division-1', matchType: 'pool', poolId: 'pool-1', roundNumber: 1,
+      teamAId: 'team-1', teamBId: 'team-2', status: 'scheduled'
+    }];
+
+    expect(hasPoolMatchesForDivisions(['division-1'], matches)).toBe(true);
+    expect(hasPoolMatchesForDivisions(['division-1', 'division-2'], matches)).toBe(false);
+    expect(hasPoolMatchesForDivisions([], matches)).toBe(false);
   });
 });

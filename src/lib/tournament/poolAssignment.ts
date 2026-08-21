@@ -1,4 +1,4 @@
-import type { Pool, PoolMembership, Team } from './types';
+import type { Match, Pool, PoolMembership, Team } from './types';
 import { newId, shuffle } from './id';
 
 export function poolLabel(index: number): string {
@@ -41,4 +41,8 @@ export function teamsInPool(poolId: string, memberships: PoolMembership[], teams
 
 export function hasPoolsForDivisions(divisionIds: string[], pools: Pool[]): boolean {
   return divisionIds.length > 0 && divisionIds.every((divisionId) => pools.some((pool) => pool.divisionId === divisionId));
+}
+
+export function hasPoolMatchesForDivisions(divisionIds: string[], matches: Match[]): boolean {
+  return divisionIds.length > 0 && divisionIds.every((divisionId) => matches.some((match) => match.divisionId === divisionId));
 }
