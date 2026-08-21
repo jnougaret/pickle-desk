@@ -42,6 +42,14 @@ for (const required of ['manifest.webmanifest', 'apple-touch-icon.png', 'mobile-
   if (!html.includes(required)) throw new Error(`index.html is missing ${required}.`);
 }
 
+const appScript = fs.readdirSync(path.join(dist, 'assets'))
+  .filter((file) => file.endsWith('.js'))
+  .map((file) => fs.readFileSync(path.join(dist, 'assets', file), 'utf8'))
+  .join('\n');
+if (appScript.includes('.tournament,.json,application/json')) {
+  throw new Error('Tournament backup import must not use a restrictive accept filter on iPadOS.');
+}
+
 const headers = read('_headers');
 if (!headers.includes('/sw.js') || !/Cache-Control:\s*no-cache/.test(headers)) {
   throw new Error('Cloudflare Pages headers must revalidate the service worker script.');

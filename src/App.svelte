@@ -517,7 +517,7 @@
 
     <section class="home-hero">
       <div class="home-heading"><img class="home-logo" src={pickleDeskMascot} alt="Pickle Desk mascot" /><h1>Pickle Desk</h1></div>
-      <div class="home-actions"><button class="button button-primary button-large" on:click={() => createOpen = true}>+ New tournament</button><label class="button button-secondary button-large">↥ Import from file<input type="file" accept=".tournament,.json,application/json" on:change={importTournamentFile} /></label></div>
+      <div class="home-actions"><button class="button button-primary button-large" on:click={() => createOpen = true}>+ New tournament</button><label class="button button-secondary button-large">↥ Import from file<input type="file" on:change={importTournamentFile} /></label></div>
     </section>
     <section class="recent-section">
       <div class="section-heading"><h2>Tournaments</h2></div>
