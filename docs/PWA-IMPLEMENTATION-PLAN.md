@@ -16,6 +16,7 @@ Maintain Pickle Desk as an installable, offline-capable web app for Android and 
 - Tauri continues to select the SQLite repository through `__TAURI_INTERNALS__`; its installers continue to consume Vite's `dist` directory and keep their current offline WebView2, NSIS, MSIX, and macOS bundle configuration.
 - The service worker is a web-only enhancement. It must not be registered for Tauri's non-HTTP application URL and must not intercept desktop database or plugin behavior.
 - No network API is required for tournament operation. Cached application assets, browser storage, file import/export, and `window.print()` are the offline operating surface.
+- Cloudflare Pages serves the `_headers` control file with the build and revalidates `/sw.js`; that deployment control file is intentionally excluded from the service-worker precache.
 - The production PWA is hosted at the root path `/` on the custom domain through Cloudflare Pages. Vite's `BASE_PATH` remains available for alternate path-based previews, while the canonical production build leaves it unset.
 
 ## Shipped behavior

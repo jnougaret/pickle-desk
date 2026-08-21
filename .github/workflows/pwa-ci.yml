@@ -25,8 +25,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run application tests
+        run: npm test
+
+      - name: Type-check the application
+        run: npx tsc --noEmit
+
       - name: Build the root production PWA
         run: npm run build
 
       - name: Smoke-test PWA assets
         run: npm run pwa:smoke
+
+      - name: Smoke-test desktop packaging inputs
+        run: npm run tauri:smoke

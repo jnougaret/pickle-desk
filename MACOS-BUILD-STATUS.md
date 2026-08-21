@@ -1,6 +1,6 @@
 # macOS build status
 
-This document covers the macOS desktop version. The installable browser PWA for Android and iPadOS is deployed separately through GitHub Pages; see [DOWNLOADS.md](DOWNLOADS.md) for the three-version distribution guide.
+This document covers the macOS desktop version. The installable browser PWA for Android and iPadOS is deployed separately through Cloudflare Pages at [pickledesk.joshuanougaret.com](https://pickledesk.joshuanougaret.com/); see [DOWNLOADS.md](DOWNLOADS.md) for the three-version distribution guide.
 
 See the [Pickle Desk project handoff](docs/PICKLE-DESK-HANDOFF.md) for the canonical repository, release, compatibility, and QA status.
 

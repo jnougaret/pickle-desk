@@ -41,12 +41,20 @@ for (const required of ['manifest.webmanifest', 'apple-touch-icon.png', 'mobile-
   if (!html.includes(required)) throw new Error(`index.html is missing ${required}.`);
 }
 
+const headers = read('_headers');
+if (!headers.includes('/sw.js') || !/Cache-Control:\s*no-cache/.test(headers)) {
+  throw new Error('Cloudflare Pages headers must revalidate the service worker script.');
+}
+
 const serviceWorker = read('sw.js');
 const match = serviceWorker.match(/const PRECACHE_URLS = (\[[\s\S]*?\]);/);
 if (!match) throw new Error('Service worker precache list is missing.');
 const urls = JSON.parse(match[1]);
 if (!urls.includes(`${basePath}index.html`) || !urls.includes(`${basePath}manifest.webmanifest`)) {
   throw new Error('Service worker must precache the app shell and manifest.');
+}
+if (urls.some((url) => url.endsWith('/_headers') || url.endsWith('/_redirects'))) {
+  throw new Error('Cloudflare Pages control files must not be precached.');
 }
 for (const url of urls) {
   if (!url.startsWith(basePath) || !fs.existsSync(path.join(dist, url.slice(basePath.length)))) {

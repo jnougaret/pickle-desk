@@ -38,7 +38,7 @@ if (fs.existsSync(manifestPath)) {
 }
 
 const precacheFiles = filesUnder(dist)
-  .filter((file) => file !== 'sw.js' && !file.endsWith('.map'))
+  .filter((file) => file !== 'sw.js' && file !== '_headers' && file !== '_redirects' && !file.endsWith('.map'))
   .sort();
 const precacheUrls = precacheFiles.map(baseUrl);
 const versionHash = createHash('sha256');
