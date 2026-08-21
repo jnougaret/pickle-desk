@@ -10,7 +10,7 @@ Pickle Desk is available in three app versions. They share the same tournament w
 
 | Version | Best for | Data and installation |
 | --- | --- | --- |
-| [PWA for Android and iPadOS](https://jnougaret.github.io/pickle-desk/) | Phones and tablets, including offline tournament-day use | Open the HTTPS app once, then install it from the browser. Tournaments stay in that browser profile. |
+| [PWA for Android and iPadOS](https://pickledesk.joshuanougaret.com/) | Phones and tablets, including offline tournament-day use | Open the HTTPS app once, then install it from the browser. Tournaments stay in that browser profile. |
 | Windows desktop | Windows laptops and desktops | Install the NSIS setup from the [downloads page](DOWNLOADS.md), or [install from the Microsoft Store](https://apps.microsoft.com/detail/9P8ST763N7F3). Tournaments use the desktop SQLite database. |
 | macOS desktop | Intel and Apple silicon Macs | Install the universal DMG from the [downloads page](DOWNLOADS.md). Tournaments use the desktop SQLite database. |
 
@@ -55,7 +55,7 @@ npm run tauri:package:msix   # Microsoft Store MSIX from the Windows Tauri execu
 
 The installed app contains the built frontend and SQLite plugin; it does not require Node, npm, Rust, or a separately installed SQLite runtime. The NSIS configuration embeds the offline WebView2 installer, so first installation does not need internet access; test the large installer on a clean supported Windows image.
 
-The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. The Pages workflow in `.github/workflows/pages.yml` builds and deploys the third, browser-based PWA at `https://jnougaret.github.io/pickle-desk/`. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
+The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. The browser-based PWA is published from the root `dist` output to the Cloudflare Pages project `pickledesk` at `https://pickledesk.joshuanougaret.com/`; `.github/workflows/pwa-ci.yml` verifies that root build and its offline assets on every source change. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
 
 The Microsoft Store MSIX path is documented in `packaging/msix/README.md`. It
 wraps the x64 Tauri executable with a Store-compatible Windows 10/11 desktop

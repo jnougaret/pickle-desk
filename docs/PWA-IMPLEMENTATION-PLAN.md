@@ -2,7 +2,7 @@
 
 ## Status
 
-The PWA is now a shipped third version of Pickle Desk. GitHub Pages deploys the browser build at [jnougaret.github.io/pickle-desk](https://jnougaret.github.io/pickle-desk/) from `main`. The PWA is the mobile distribution for Android and iPadOS; Windows and macOS remain native desktop distributions.
+The PWA is now a shipped third version of Pickle Desk. Cloudflare Pages serves the browser build at [pickledesk.joshuanougaret.com](https://pickledesk.joshuanougaret.com/) from the root `dist` output. The PWA is the mobile distribution for Android and iPadOS; Windows and macOS remain native desktop distributions.
 
 For the complete migration record, release contract, compatibility identifiers, and carried-forward QA limits, see the [Pickle Desk project handoff](PICKLE-DESK-HANDOFF.md).
 
@@ -16,7 +16,7 @@ Maintain Pickle Desk as an installable, offline-capable web app for Android and 
 - Tauri continues to select the SQLite repository through `__TAURI_INTERNALS__`; its installers continue to consume Vite's `dist` directory and keep their current offline WebView2, NSIS, MSIX, and macOS bundle configuration.
 - The service worker is a web-only enhancement. It must not be registered for Tauri's non-HTTP application URL and must not intercept desktop database or plugin behavior.
 - No network API is required for tournament operation. Cached application assets, browser storage, file import/export, and `window.print()` are the offline operating surface.
-- The production PWA is hosted at `/pickle-desk/` on GitHub Pages. Vite's `BASE_PATH` keeps that project-site path separate from the root path used by local browser development and Tauri.
+- The production PWA is hosted at the root path `/` on the custom domain through Cloudflare Pages. Vite's `BASE_PATH` remains available for alternate path-based previews, while the canonical production build leaves it unset.
 
 ## Shipped behavior
 
@@ -48,21 +48,21 @@ Maintain Pickle Desk as an installable, offline-capable web app for Android and 
 15. `npm run build` still produces the frontend directory expected by Tauri.
 16. `npm run tauri:smoke` still passes, including the current frontend path, icons, targets, SQLite preload, offline WebView2 installer, and offline CSS checks.
 17. The release workflow remains tag-driven and continues to build the existing macOS universal DMG, Windows NSIS installer, and optional Microsoft Store MSIX from the same `dist` output.
-18. `.github/workflows/pages.yml` builds the production PWA with `BASE_PATH=/pickle-desk/`, runs the PWA smoke check, and deploys `dist` through GitHub Pages.
+18. `.github/workflows/pwa-ci.yml` builds the production PWA at the root path and runs the PWA smoke check. The Cloudflare Pages project `pickledesk` publishes the resulting `dist` directory at the custom domain.
 
 ## Deployment and release procedure
 
-1. Merge changes to `main`; the Pages workflow builds the PWA and deploys it to `https://jnougaret.github.io/pickle-desk/`.
-2. For a local Pages-path build, set `BASE_PATH=/pickle-desk/` before `npm run build` and `npm run pwa:smoke`. Normal local and Tauri builds leave `BASE_PATH` unset and use `/`.
+1. Merge changes to `main`; the PWA CI workflow verifies the root build, then publish `dist` to the Cloudflare Pages project `pickledesk` at `https://pickledesk.joshuanougaret.com/`.
+2. For the canonical production build, leave `BASE_PATH` unset before `npm run build` and `npm run pwa:smoke`. Set `BASE_PATH` only when validating an alternate path-based preview.
 3. Open the deployed HTTPS URL once on each target device before relying on offline launch. Verify the browser's install flow, home-screen launch, persistence, import/export, and printing on physical Android and iPadOS hardware.
-4. Keep the PWA link in both `DOWNLOADS.md` and the latest release notes for discovery. Do not upload a PWA binary to the GitHub Release; the Pages URL is the PWA distribution channel.
+4. Keep the PWA link in both `DOWNLOADS.md` and the latest release notes for discovery. Do not upload a PWA binary to the GitHub Release; the custom-domain URL is the PWA distribution channel.
 5. Run the desktop release workflow separately for tagged Windows and macOS installers. Those native builds use the same frontend source but retain their Tauri/SQLite storage boundary.
 
 ## Verification matrix
 
 | Area | Local evidence | Device/follow-up evidence |
 | --- | --- | --- |
-| GitHub Pages deployment | Pages workflow builds with the project-site base path, runs `npm run pwa:smoke`, and uploads `dist` | Open the deployed HTTPS URL and verify the manifest/service worker from the delivered site |
+| Cloudflare Pages deployment | PWA CI builds the root output and runs `npm run pwa:smoke`; publish `dist` to the `pickledesk` project | Open the deployed HTTPS URL and verify the manifest/service worker from the delivered site |
 | Build/install metadata | Manifest JSON, icon dimensions, generated service-worker precache, TypeScript/build tests | Install from a deployed HTTPS origin on Android Chrome and iPadOS Safari |
 | Offline reload | Production preview, service-worker cache inspection, network-disabled/fallback test where browser tooling permits | Airplane-mode launch after one online visit on both target platforms |
 | Persistence | Browser repository tests plus browser restart/reload smoke | Kill/reopen installed PWA and confirm tournament/results remain |

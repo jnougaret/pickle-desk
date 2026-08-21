@@ -2,19 +2,19 @@
 
 Choose the version that matches the device you will use during the tournament:
 
-- [Open Pickle Desk PWA for Android and iPadOS](https://jnougaret.github.io/pickle-desk/)
+- [Open Pickle Desk PWA for Android and iPadOS](https://pickledesk.joshuanougaret.com/)
 - [Download the Windows desktop app](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe)
 - [Install the Windows desktop app from Microsoft Store](https://apps.microsoft.com/detail/9P8ST763N7F3)
 - [Download the macOS desktop app](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-macOS-universal.dmg)
 - [View the latest release notes and checksums](https://github.com/jnougaret/pickle-desk/releases/latest)
 
-This is the canonical public distribution page for Pickle Desk. The PWA is delivered by GitHub Pages; desktop installers are delivered through GitHub Releases and the Microsoft Store.
+This is the canonical public distribution page for Pickle Desk. The PWA is delivered by Cloudflare Pages at the custom domain; desktop installers are delivered through GitHub Releases and the Microsoft Store.
 
 ## PWA for Android and iPadOS
 
-The PWA is the mobile version of Pickle Desk. It runs from the official HTTPS GitHub Pages site and can continue to launch after the app shell has been cached:
+The PWA is the mobile version of Pickle Desk. It runs from the official HTTPS custom-domain site and can continue to launch after the app shell has been cached:
 
-1. Open [Pickle Desk PWA](https://jnougaret.github.io/pickle-desk/) while online.
+1. Open [Pickle Desk PWA](https://pickledesk.joshuanougaret.com/) while online.
 2. Install it from the browser: choose **Install app** or **Add to Home screen** in Android Chrome; on iPadOS Safari, choose **Share → Add to Home Screen**.
 3. Open Pickle Desk from the new home-screen icon. Keep the device online for the first launch and whenever a new release needs to be downloaded.
 

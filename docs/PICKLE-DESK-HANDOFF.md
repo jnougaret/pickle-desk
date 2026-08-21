@@ -1,12 +1,12 @@
 # Pickle Desk project handoff
 
-This is the final handoff for the project formerly branded and hosted as Tournament Desk. The product name, GitHub repository, GitHub Pages site, release assets, and user-facing documentation now use Pickle Desk.
+This is the final handoff for the project formerly branded as Tournament Desk. The product name, GitHub repository, custom-domain PWA, release assets, and user-facing documentation now use Pickle Desk.
 
 ## Canonical locations
 
 - Source repository: [github.com/jnougaret/pickle-desk](https://github.com/jnougaret/pickle-desk)
 - Source branch: `main`
-- Browser PWA: [jnougaret.github.io/pickle-desk](https://jnougaret.github.io/pickle-desk/)
+- Browser PWA: [pickledesk.joshuanougaret.com](https://pickledesk.joshuanougaret.com/)
 - Distribution page: [DOWNLOADS.md](../DOWNLOADS.md)
 - Latest GitHub release: [pickle-desk/releases/latest](https://github.com/jnougaret/pickle-desk/releases/latest)
 - Microsoft Store listing: [Pickle Desk](https://apps.microsoft.com/detail/9P8ST763N7F3)
@@ -19,7 +19,7 @@ Pickle Desk has three supported versions:
 
 | Version | Distribution | Storage boundary |
 | --- | --- | --- |
-| PWA | GitHub Pages for Android and iPadOS | Browser `localStorage` under `pickle-desk:tournaments` |
+| PWA | Cloudflare Pages at `pickledesk.joshuanougaret.com` for Android and iPadOS | Browser `localStorage` under `pickle-desk:tournaments` |
 | Windows desktop | NSIS installer and Microsoft Store MSIX | Local SQLite through Tauri |
 | macOS desktop | Universal Intel/Apple-silicon DMG | Local SQLite through Tauri |
 
@@ -27,9 +27,9 @@ All three versions share the tournament engine and `.tournament` import/export f
 
 ## Release and deployment rules
 
-- Push source changes to `main`; `.github/workflows/pages.yml` builds with `BASE_PATH=/pickle-desk/`, runs the PWA smoke test, and deploys GitHub Pages.
+- Push source changes to `main`; `.github/workflows/pwa-ci.yml` builds the root production PWA and runs the PWA smoke test. Publish the resulting `dist` directory to the Cloudflare Pages project `pickledesk` at `https://pickledesk.joshuanougaret.com/`.
 - Create a version tag such as `v0.2.0` to run `.github/workflows/release.yml` and publish the Windows and macOS installers, optional MSIX, and `SHA256SUMS.txt` to a GitHub Release.
-- Do not commit generated `dist` or `src-tauri/target` output, and do not upload the PWA as a release binary. The Pages URL is the PWA distribution channel.
+- Do not commit generated `dist` or `src-tauri/target` output, and do not upload the PWA as a release binary. The custom-domain URL is the PWA distribution channel.
 - Windows signing is conditional on the documented certificate secrets. macOS signing and notarization are conditional on the documented Apple secrets. Without them, installers may trigger SmartScreen or Gatekeeper warnings.
 - The existing `v0.1.0` release was cleaned to use Pickle Desk asset names. A new version tag is required when publishing installer artifacts for changes made after that release.
 

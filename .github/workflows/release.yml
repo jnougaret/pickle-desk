@@ -129,6 +129,6 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "$GITHUB_REF_NAME" \
-            --notes "The Pickle Desk PWA for Android and iPadOS is available at https://jnougaret.github.io/pickle-desk/. The PWA is deployed through GitHub Pages rather than uploaded as a release binary." \
+            --notes "The Pickle Desk PWA for Android and iPadOS is available at https://pickledesk.joshuanougaret.com/. The PWA is deployed through Cloudflare Pages rather than uploaded as a release binary." \
             --generate-notes \
             release-assets/*
