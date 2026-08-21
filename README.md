@@ -23,7 +23,7 @@ npm install
 npm run dev
 ```
 
-Open the local Vite URL in a browser. This is the same browser repository used by the PWA: tournament data is stored in local browser storage and can be exported as a portable, versioned `.tournament` JSON file for backup or restore. After the PWA has been opened once online, its cached app shell can launch without a connection.
+Open the local Vite URL in a browser. This is the same browser repository used by the PWA: tournament data is stored in local browser storage and can be exported as a portable, versioned `.tournament` JSON file for backup or restore. After the PWA has been opened once online, its service worker can reconstruct the app shell without a connection even if its normal Cache Storage entries are later cleared, provided the service-worker registration remains installed.
 
 ## Verify
 

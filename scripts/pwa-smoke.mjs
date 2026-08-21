@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 
 const root = process.cwd();
 const dist = path.join(root, 'dist');
@@ -64,5 +65,63 @@ for (const url of urls) {
 for (const required of ['CACHE_NAME = \'pickle-desk-', 'LEGACY_CACHE_PREFIX', 'network-first', 'caches.match(request)', 'caches.match(INDEX_URL)']) {
   if (!serviceWorker.includes(required)) throw new Error(`Service worker behavior is missing ${required}.`);
 }
+for (const required of ['const EMBEDDED_ASSETS =', 'function embeddedResponse(url)', 'function offlineAppShell()', 'embeddedResponse(request.url)', '.catch(() => undefined)']) {
+  if (!serviceWorker.includes(required)) throw new Error(`Service worker embedded offline fallback is missing ${required}.`);
+}
+for (const url of urls) {
+  if (!serviceWorker.includes(JSON.stringify(url))) {
+    throw new Error(`Embedded offline assets are missing: ${url}`);
+  }
+}
 
-console.log(`PWA smoke check passed: standalone manifest, 192/512 icons, ${urls.length} precached files, and offline navigation fallback.`);
+async function assertCacheIndependentFallback() {
+  const listeners = new Map();
+  const origin = 'https://pwa-smoke.example';
+  const unavailableCaches = {
+    open: async () => { throw new Error('Cache Storage unavailable'); },
+    match: async () => { throw new Error('Cache Storage unavailable'); },
+    keys: async () => { throw new Error('Cache Storage unavailable'); }
+  };
+  const scope = vm.createContext({
+    URL,
+    Uint8Array,
+    Response,
+    atob,
+    caches: unavailableCaches,
+    fetch: async () => { throw new Error('Network unavailable'); },
+    console,
+    self: {
+      location: new URL(`${origin}${basePath}`),
+      addEventListener: (type, handler) => listeners.set(type, handler),
+      skipWaiting: async () => {},
+      clients: { claim: async () => {} }
+    }
+  });
+  vm.runInContext(serviceWorker, scope, { filename: 'dist/sw.js' });
+  const fetchHandler = listeners.get('fetch');
+  if (!fetchHandler) throw new Error('Service worker fetch handler was not registered.');
+
+  async function respond(request) {
+    let responsePromise;
+    fetchHandler({
+      request,
+      respondWith: (value) => { responsePromise = Promise.resolve(value); }
+    });
+    return responsePromise;
+  }
+
+  const navigation = await respond({ method: 'GET', mode: 'navigate', url: `${origin}${basePath}` });
+  if (!navigation || navigation.status !== 200 || !(await navigation.text()).includes('<div id="app"></div>')) {
+    throw new Error('Cache-independent offline navigation did not return the app shell.');
+  }
+
+  const scriptUrl = urls.find((url) => url.endsWith('.js'));
+  const script = await respond({ method: 'GET', mode: 'same-origin', url: `${origin}${scriptUrl}` });
+  if (!script || script.status !== 200 || !(await script.text()).includes('Pickle Desk')) {
+    throw new Error('Cache-independent offline asset fallback did not return the app script.');
+  }
+}
+
+await assertCacheIndependentFallback();
+
+console.log(`PWA smoke check passed: standalone manifest, 192/512 icons, ${urls.length} precached files, and executable cache-independent offline fallback.`);

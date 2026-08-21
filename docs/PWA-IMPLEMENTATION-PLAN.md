@@ -32,9 +32,10 @@ Maintain Pickle Desk as an installable, offline-capable web app for Android and 
 
 5. A production build contains a service worker with an explicit build-versioned precache containing `index.html`, the manifest, icons, CSS, JavaScript, and other local build assets.
 6. The service worker uses cache-first behavior for same-origin static assets and a network-first navigation strategy with `/index.html` as the offline fallback.
-7. Service-worker activation removes older Pickle Desk caches and claims open clients after an update; failed cache entries do not make the build silently incomplete.
-8. The app registers the service worker only in a production browser HTTP(S) context. Tauri continues to run without service-worker registration or service-worker errors.
-9. A browser refresh and browser restart preserve saved tournaments through the existing browser repository. The service worker does not replace, namespace-conflict with, or clear that storage.
+7. The generated service worker embeds a copy of every local production asset and uses it when Cache Storage is empty, so an installed PWA can reconstruct the full stock app shell after browser cache cleanup while offline.
+8. Service-worker activation removes older Pickle Desk caches and claims open clients after an update; failed cache entries do not make the build silently incomplete.
+9. The app registers the service worker only in a production browser HTTP(S) context. Tauri continues to run without service-worker registration or service-worker errors.
+10. A browser refresh and browser restart preserve saved tournaments through the existing browser repository. If tournament storage is absent, the reconstructed app opens its normal empty state with no tournament data. The service worker does not replace, namespace-conflict with, or clear that storage.
 
 ### Touch operation and tournament workflows
 
@@ -65,7 +66,7 @@ Maintain Pickle Desk as an installable, offline-capable web app for Android and 
 | --- | --- | --- |
 | Cloudflare Pages deployment | PWA CI builds the root output and runs `npm run pwa:smoke`; publish `dist` to the `pickledesk` project | Open the deployed HTTPS URL and verify the manifest/service worker from the delivered site |
 | Build/install metadata | Manifest JSON, icon dimensions, generated service-worker precache, TypeScript/build tests | Install from a deployed HTTPS origin on Android Chrome and iPadOS Safari |
-| Offline reload | Production preview, service-worker cache inspection, network-disabled/fallback test where browser tooling permits | Airplane-mode launch after one online visit on both target platforms |
+| Offline reload | Production preview, service-worker cache inspection, network-disabled/fallback test where browser tooling permits, and generated embedded-asset fallback checks | Airplane-mode launch after one online visit on both target platforms; repeat after clearing browser cache while retaining the installed service worker |
 | Persistence | Browser repository tests plus browser restart/reload smoke | Kill/reopen installed PWA and confirm tournament/results remain |
 | Touch pools | Responsive browser viewport and labelled control interaction | Real iPad/Android touch interaction; confirm no accidental scroll or drag dependency |
 | Import/export | File input and download path in browser smoke; JSON round-trip tests | Real Files app/Android Files import and export |
@@ -74,4 +75,4 @@ Maintain Pickle Desk as an installable, offline-capable web app for Android and 
 
 ## Known QA boundary
 
-This checkout can validate the production build, service-worker files, responsive behavior, persistence contract, and desktop packaging inputs. It cannot truthfully certify physical iPadOS/Android installation, airplane-mode launch, native file-provider behavior, or platform print dialogs without those devices. Those checks remain explicit release acceptance items rather than being claimed from desktop emulation.
+This checkout can validate the production build, service-worker files, responsive behavior, persistence contract, and desktop packaging inputs. It cannot truthfully certify physical iPadOS/Android installation, airplane-mode launch, native file-provider behavior, or platform print dialogs without those devices. The embedded fallback protects against Cache Storage cleanup only while the installed service worker remains registered; if browser cleanup also unregisters the service worker/site data, no web PWA can reconstruct its code in airplane mode and the app must be opened once online again. Those checks remain explicit release acceptance items rather than being claimed from desktop emulation.
