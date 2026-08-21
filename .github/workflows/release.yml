@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      include_msix:
+        description: Build and attach the Microsoft Store MSIX package
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -83,10 +90,10 @@ jobs:
           name: windows-nsis
           path: src-tauri/target/release/bundle/nsis/*-setup.exe
       - name: Build Microsoft Store MSIX package
-        if: ${{ env.MSIX_PACKAGE_NAME != '' && env.MSIX_PUBLISHER != '' && env.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.include_msix == true && env.MSIX_PACKAGE_NAME != '' && env.MSIX_PUBLISHER != '' && env.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
         run: npm run tauri:package:msix
       - name: Upload Microsoft Store MSIX package
-        if: ${{ env.MSIX_PACKAGE_NAME != '' && env.MSIX_PUBLISHER != '' && env.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.include_msix == true && env.MSIX_PACKAGE_NAME != '' && env.MSIX_PUBLISHER != '' && env.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: windows-msix

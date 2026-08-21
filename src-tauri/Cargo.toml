@@ -1,6 +1,6 @@
 [package]
 name = "pickle-desk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Offline pickleball tournament operations desk"
 authors = ["Joshua Nougaret"]
 edition = "2021"
