@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#102a2a" />
-    <meta name="description" content="Install Pickle Desk for Android and iPadOS, or download it for Windows and macOS." />
+    <meta name="description" content="Install the Pickle Desk Web app for offline use, or download it for Windows and macOS." />
     <title>Pickle Desk downloads</title>
     <style>
       :root {
@@ -66,6 +66,35 @@
       .details h2 { color: var(--text); }
       .details li + li { margin-top: 0.5rem; }
 
+      .offline-guide {
+        margin: 2.5rem 0;
+        border-top: 1px solid var(--line);
+        padding-top: 1.5rem;
+      }
+
+      .offline-guide > p {
+        margin: 0 0 1.25rem;
+        color: var(--muted);
+      }
+
+      .platform-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+        gap: 1rem;
+      }
+
+      .platform {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 1.2rem 1.35rem;
+      }
+
+      .platform h3 { margin: 0 0 0.85rem; font-size: 1.1rem; }
+      .platform h4 { margin: 1rem 0 0.2rem; color: var(--text); font-size: 0.95rem; }
+      .platform h4:first-of-type { margin-top: 0; }
+      .platform p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+      .platform strong { color: var(--text); }
+
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { scroll-behavior: auto !important; }
       }
@@ -80,10 +109,10 @@
       <section class="downloads" aria-label="Downloads">
         <article class="download-card">
           <div>
-            <h2>Android &amp; iPadOS</h2>
+            <h2>Web app</h2>
             <p>Install the offline-capable browser app from the official HTTPS site.</p>
           </div>
-          <a class="download-link" href="https://pickledesk.joshuanougaret.com/">Open the App ↗</a>
+          <a class="download-link" href="https://pickledesk.joshuanougaret.com/">Open the Web app ↗</a>
         </article>
         <article class="download-card">
           <div>
@@ -99,6 +128,53 @@
           </div>
           <a class="download-link" href="https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-macOS-universal.dmg">Download for macOS ↗</a>
         </article>
+      </section>
+
+      <section class="offline-guide" aria-labelledby="offline-title">
+        <h2 id="offline-title">Install for offline use</h2>
+        <p>While online, <a href="https://pickledesk.joshuanougaret.com/">open Pickle Desk</a>, install it using the steps below, and open the new icon once. Then you can use it in Airplane Mode. The Web app saves tournaments in this browser profile, so export a <code>.tournament</code> backup before switching devices or versions.</p>
+
+        <div class="platform-grid">
+          <article class="platform">
+            <h3>iOS (iPhone)</h3>
+            <h4>Safari</h4>
+            <p>Open Pickle Desk in Safari. Tap <strong>Share → Add to Home Screen</strong>, turn on <strong>Open as Web App</strong>, then tap <strong>Add</strong>.</p>
+            <h4>Chrome</h4>
+            <p>Open Pickle Desk in Chrome. Tap <strong>Share</strong> beside the address bar, then <strong>Add to Home Screen → Add</strong>. iPhone Chrome uses the Share menu; it does not use Android’s <strong>Install app</strong> menu.</p>
+          </article>
+
+          <article class="platform">
+            <h3>Android</h3>
+            <h4>Chrome</h4>
+            <p>Open Pickle Desk in Chrome. Tap <strong>⋮ → Install app</strong> and confirm. If Chrome shows <strong>Add to home screen → Create shortcut</strong> instead, tap <strong>Add</strong>, then open the new icon once before going offline.</p>
+          </article>
+
+          <article class="platform">
+            <h3>iPadOS (iPad)</h3>
+            <h4>Safari</h4>
+            <p>Open Pickle Desk in Safari. Tap <strong>Share → More → Add to Home Screen</strong>, turn on <strong>Open as Web App</strong>, then tap <strong>Add</strong>.</p>
+            <h4>Chrome</h4>
+            <p>Open Pickle Desk in Chrome. Tap <strong>Share</strong> beside the address bar, then <strong>Add to Home Screen → Add</strong>.</p>
+          </article>
+
+          <article class="platform">
+            <h3>macOS</h3>
+            <h4>Chrome Web app</h4>
+            <p>Open Pickle Desk in Chrome. Choose <strong>⋮ → Cast, save, and share → Install page as app</strong> (or use the install icon in the address bar), then open it once from Applications or the Dock.</p>
+            <h4>Safari Web app</h4>
+            <p>On macOS Sonoma 14 or later, open Pickle Desk in Safari and choose <strong>File → Add to Dock</strong>, then <strong>Add</strong>.</p>
+            <h4>Native desktop app</h4>
+            <p>For the DMG above, drag Pickle Desk to Applications. If macOS blocks the first launch, Control-click the app and choose <strong>Open</strong>, or use <strong>System Settings → Privacy &amp; Security → Open Anyway</strong>. Only approve the official download.</p>
+          </article>
+
+          <article class="platform">
+            <h3>Windows</h3>
+            <h4>Chrome Web app</h4>
+            <p>Open Pickle Desk in Chrome. Choose <strong>⋮ → Cast, save, and share → Install page as app</strong> (or use the install icon in the address bar), then open it once from the desktop or Start menu.</p>
+            <h4>Native desktop app</h4>
+            <p>For the EXE above, run the installer. If SmartScreen says <strong>Windows protected your PC</strong>, choose <strong>More info → Run anyway</strong>. The Microsoft Store link avoids the unsigned-installer warning. Only approve the official download.</p>
+          </article>
+        </div>
       </section>
 
       <section class="details">

@@ -2,40 +2,41 @@
 
 Choose the version that matches the device you will use during the tournament:
 
-- [Open the App](https://pickledesk.joshuanougaret.com/)
+- [Open the Web app](https://pickledesk.joshuanougaret.com/)
 - [Download the Windows desktop app](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe)
 - [Install the Windows desktop app from Microsoft Store](https://apps.microsoft.com/detail/9P8ST763N7F3)
 - [Download the macOS desktop app](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-macOS-universal.dmg)
 - [View the latest release notes and checksums](https://github.com/jnougaret/pickle-desk/releases/latest)
 
-This is the canonical public distribution page for Pickle Desk. The PWA is delivered by Cloudflare Pages at the custom domain; desktop installers are delivered through GitHub Releases and the Microsoft Store.
+This is the canonical public distribution page for Pickle Desk. The Web app is delivered by Cloudflare Pages at the custom domain; desktop installers are delivered through GitHub Releases and the Microsoft Store.
 
-## PWA for Android and iPadOS
+## Install for offline use
 
-The PWA is the mobile version of Pickle Desk. It runs from the official HTTPS custom-domain site and can continue to launch after the app shell has been cached:
+While online, open the [Pickle Desk Web app](https://pickledesk.joshuanougaret.com/), install it using the steps below, and open the new icon once. Then you can use it in Airplane Mode. The Web app saves tournaments in the current browser profile, so export a `.tournament` backup before switching devices or versions.
 
-1. Open [Pickle Desk PWA](https://pickledesk.joshuanougaret.com/) while online.
-2. Install it from the browser: choose **Install app** or **Add to Home screen** in Android Chrome; on iPadOS Safari, choose **Share → Add to Home Screen**.
-3. Open Pickle Desk from the new home-screen icon. Keep the device online for the first launch and whenever a new release needs to be downloaded.
+### iOS (iPhone)
 
-The PWA stores tournaments in the current browser profile, just like a normal browser session. It does not share the desktop SQLite database or synchronize automatically with Windows/macOS. Export a `.tournament` file before switching devices or app versions, and keep important backups outside the browser profile.
+- **Safari:** Open Pickle Desk in Safari. Tap **Share → Add to Home Screen**, turn on **Open as Web App**, then tap **Add**.
+- **Chrome:** Open Pickle Desk in Chrome. Tap **Share** beside the address bar, then **Add to Home Screen → Add**. iPhone Chrome uses the Share menu; it does not use Android’s **Install app** menu.
 
-The PWA is not a release binary, so it does not appear as a downloadable asset in the GitHub Release. The latest release page links to it for discoverability; this page is the canonical installation guide.
+### Android
 
-## Windows
+- **Chrome:** Open Pickle Desk in Chrome. Tap **⋮ → Install app** and confirm. If Chrome shows **Add to home screen → Create shortcut** instead, tap **Add**, then open the new icon once before going offline.
 
-1. Open the downloaded `.exe` installer.
-2. Follow the prompts to install Pickle Desk for your Windows user.
-3. Launch Pickle Desk from the Start menu or desktop shortcut.
+### iPadOS (iPad)
 
-The installer includes WebView2, so a separate WebView2 download should not be necessary. If Windows SmartScreen displays a warning, choose **More info** and then **Run anyway** only when the file came from the official links above. Unsigned releases may show this warning.
+- **Safari:** Open Pickle Desk in Safari. Tap **Share → More → Add to Home Screen**, turn on **Open as Web App**, then tap **Add**.
+- **Chrome:** Open Pickle Desk in Chrome. Tap **Share** beside the address bar, then **Add to Home Screen → Add**.
 
-## macOS
+### macOS
 
-1. Open the downloaded `.dmg` file.
-2. Drag Pickle Desk to the Applications folder.
-3. Open Pickle Desk from Applications.
+- **Chrome Web app:** Open Pickle Desk in Chrome. Choose **⋮ → Cast, save, and share → Install page as app** (or use the install icon in the address bar), then open it once from Applications or the Dock.
+- **Safari Web app:** On macOS Sonoma 14 or later, open Pickle Desk in Safari and choose **File → Add to Dock**, then **Add**.
+- **Native desktop app:** For the DMG above, drag Pickle Desk to Applications. If macOS blocks the first launch, Control-click the app and choose **Open**, or use **System Settings → Privacy & Security → Open Anyway**. Only approve the official download.
 
-The download is a universal build for Apple silicon and Intel Macs. If macOS blocks the first launch, open **System Settings → Privacy & Security**, then choose **Open Anyway** only when the file came from the official links above. Releases may require this step until Apple signing and notarization are configured.
+### Windows
 
-Pickle Desk runs locally and does not require Node, Rust, or an internet connection after installation. The Windows and macOS desktop apps use SQLite, while the PWA uses browser storage. Export important tournaments before installing a major update or moving between app versions so you have a portable backup.
+- **Chrome Web app:** Open Pickle Desk in Chrome. Choose **⋮ → Cast, save, and share → Install page as app** (or use the install icon in the address bar), then open it once from the desktop or Start menu.
+- **Native desktop app:** For the EXE above, run the installer. If SmartScreen says **Windows protected your PC**, choose **More info → Run anyway**. The Microsoft Store link avoids the unsigned-installer warning. Only approve the official download.
+
+The Web app is not a release binary, so it does not appear as a downloadable asset in the GitHub Release. The latest release page links to it for discoverability; this page is the canonical installation guide. The Windows installer includes WebView2, and the macOS download is a universal build for Apple silicon and Intel Macs. Both desktop apps run locally without Node, Rust, or an internet connection after installation.

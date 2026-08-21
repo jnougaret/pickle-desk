@@ -10,11 +10,11 @@ Pickle Desk is available in three app versions. They share the same tournament w
 
 | Version | Best for | Data and installation |
 | --- | --- | --- |
-| [PWA for Android and iPadOS](https://pickledesk.joshuanougaret.com/) | Phones and tablets, including offline tournament-day use | Open the HTTPS app once, then install it from the browser. Tournaments stay in that browser profile. |
+| [Web app for Android and iPadOS](https://pickledesk.joshuanougaret.com/) | Phones and tablets, including offline tournament-day use | Open the HTTPS app once, then install it from the browser. Tournaments stay in that browser profile. |
 | Windows desktop | Windows laptops and desktops | Install the NSIS setup from the [downloads page](DOWNLOADS.md), or [install from the Microsoft Store](https://apps.microsoft.com/detail/9P8ST763N7F3). Tournaments use the desktop SQLite database. |
 | macOS desktop | Intel and Apple silicon Macs | Install the universal DMG from the [downloads page](DOWNLOADS.md). Tournaments use the desktop SQLite database. |
 
-The PWA is the mobile version; it is not a fourth native installer and it does not automatically synchronize with either desktop version. Export a `.tournament` file when moving a tournament between versions.
+The Web app is the mobile version; it is not a fourth native installer and it does not automatically synchronize with either desktop version. Export a `.tournament` file when moving a tournament between versions.
 
 ## Run locally
 
@@ -23,7 +23,7 @@ npm install
 npm run dev
 ```
 
-Open the local Vite URL in a browser. This is the same browser repository used by the PWA: tournament data is stored in local browser storage and can be exported as a portable, versioned `.tournament` JSON file for backup or restore. After the PWA has been opened once online, its service worker can reconstruct the app shell without a connection even if its normal Cache Storage entries are later cleared, provided the service-worker registration remains installed.
+Open the local Vite URL in a browser. This is the same browser repository used by the Web app: tournament data is stored in local browser storage and can be exported as a portable, versioned `.tournament` JSON file for backup or restore. After the Web app has been opened once online, its service worker can reconstruct the app shell without a connection even if its normal Cache Storage entries are later cleared, provided the service-worker registration remains installed.
 
 ## Verify
 
@@ -55,7 +55,7 @@ npm run tauri:package:msix   # Microsoft Store MSIX from the Windows Tauri execu
 
 The installed app contains the built frontend and SQLite plugin; it does not require Node, npm, Rust, or a separately installed SQLite runtime. The NSIS configuration embeds the offline WebView2 installer, so first installation does not need internet access; test the large installer on a clean supported Windows image.
 
-The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. The browser-based PWA is published from the root `dist` output to the Cloudflare Pages project `pickledesk` at `https://pickledesk.joshuanougaret.com/`; `.github/workflows/pwa-ci.yml` verifies that root build and its offline assets on every source change. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
+The release workflow in `.github/workflows/release.yml` builds a universal macOS DMG and a Windows NSIS installer on their native runners. The browser-based Web app is published from the root `dist` output to the Cloudflare Pages project `pickledesk` at `https://pickledesk.joshuanougaret.com/`; `.github/workflows/pwa-ci.yml` verifies that root build and its offline assets on every source change. macOS signing/notarization requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` (or the documented App Store Connect API variables). Windows signing is enabled when `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, and optionally `WINDOWS_TIMESTAMP_URL` are supplied; otherwise the workflow produces an unsigned installer that may trigger SmartScreen warnings.
 
 The Microsoft Store MSIX path is documented in `packaging/msix/README.md`. It
 wraps the x64 Tauri executable with a Store-compatible Windows 10/11 desktop
@@ -70,7 +70,7 @@ submitted to the Store after certification.
 
 ## Public release downloads
 
-Send users to the [Pickle Desk downloads page](https://pickledesk.joshuanougaret.com/downloads), with the source and full distribution guide in [DOWNLOADS.md](DOWNLOADS.md). It provides the live PWA entry point, stable Windows and macOS links to the latest GitHub Release, release notes, checksums, and the short installation guidance users may need for unsigned builds.
+Send users to the [Pickle Desk downloads page](https://pickledesk.joshuanougaret.com/downloads), with the source and full distribution guide in [DOWNLOADS.md](DOWNLOADS.md). It provides the live Web app entry point, stable Windows and macOS links to the latest GitHub Release, release notes, checksums, and the short installation guidance users may need for unsigned builds.
 
 The downloads page is the canonical public distribution guide. Do not replace its release links with binaries committed to the source repository.
 
