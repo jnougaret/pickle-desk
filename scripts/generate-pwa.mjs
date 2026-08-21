@@ -122,17 +122,28 @@ async function cacheResponse(cache, request, response) {
   await cache.put(request, safeResponse);
 }
 
+async function removeRedirectedEntries(cache) {
+  const requests = await cache.keys();
+  await Promise.all(requests.map(async (request) => {
+    const response = await cache.match(request);
+    if (response?.redirected || response?.type === 'opaqueredirect') await cache.delete(request);
+  }));
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => Promise.all(PRECACHE_URLS.map(async (url) => {
-        try {
-          const response = await fetch(url);
-          await cacheResponse(cache, url, response);
-        } catch {
-          // A single unavailable asset must not block the embedded fallback.
-        }
-      })))
+      .then(async (cache) => {
+        await removeRedirectedEntries(cache);
+        await Promise.all(PRECACHE_URLS.map(async (url) => {
+          try {
+            const response = await fetch(url);
+            await cacheResponse(cache, url, response);
+          } catch {
+            // A single unavailable asset must not block the embedded fallback.
+          }
+        }));
+      })
       .catch(() => undefined)
       .then(() => self.skipWaiting())
   );

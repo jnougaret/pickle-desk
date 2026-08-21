@@ -153,9 +153,11 @@ async function assertRedirectResponsesAreNormalized() {
   const cache = {
     put: async (request, response) => stored.set(new URL(typeof request === 'string' ? request : request.url, origin).href, response),
     match: async (request) => stored.get(new URL(typeof request === 'string' ? request : request.url, origin).href),
-    keys: async () => [],
-    delete: async () => false
+    keys: async () => Array.from(stored.keys()).map((url) => ({ url })),
+    delete: async (request) => stored.delete(new URL(typeof request === 'string' ? request : request.url, origin).href)
   };
+  stored.set(`${origin}${basePath}stale-redirect`, new TestResponse('stale', { redirected: true }));
+  stored.set(`${origin}${basePath}stale-opaque`, new TestResponse(null, { status: 0, type: 'opaqueredirect' }));
   const scope = vm.createContext({
     URL,
     Request: class TestRequest { constructor(url) { this.url = url; } },
@@ -181,6 +183,9 @@ async function assertRedirectResponsesAreNormalized() {
   const cachedIndex = stored.get(`${origin}${basePath}index.html`);
   if (!cachedIndex || cachedIndex.redirected || !cachedIndex.ok) {
     throw new Error('Redirected precache responses were not normalized.');
+  }
+  if (stored.has(`${origin}${basePath}stale-redirect`) || stored.has(`${origin}${basePath}stale-opaque`)) {
+    throw new Error('Stale redirected cache entries were not removed during install.');
   }
 }
 
