@@ -55,6 +55,11 @@ if (!headers.includes('/sw.js') || !/Cache-Control:\s*no-cache/.test(headers)) {
   throw new Error('Cloudflare Pages headers must revalidate the service worker script.');
 }
 
+const redirects = read('_redirects');
+if (!redirects.split(/\r?\n/).some((line) => line.trim() === '/downloads /downloads/ 301')) {
+  throw new Error('Cloudflare Pages must redirect the downloads path to its static document.');
+}
+
 const serviceWorker = read('sw.js');
 const match = serviceWorker.match(/const PRECACHE_URLS = (\[[\s\S]*?\]);/);
 if (!match) throw new Error('Service worker precache list is missing.');
