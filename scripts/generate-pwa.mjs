@@ -86,6 +86,7 @@ const CACHE_PREFIX = 'pickle-desk-';
 const LEGACY_CACHE_PREFIX = 'tournament-desk-';
 const APP_BASE = ${JSON.stringify(basePath)};
 const INDEX_URL = APP_BASE + 'index.html';
+const DOWNLOADS_URL = APP_BASE + 'downloads/index.html';
 const PRECACHE_URLS = ${JSON.stringify(precacheUrls, null, 2)};
 const EMBEDDED_ASSETS = ${JSON.stringify(embeddedAssets)};
 
@@ -166,6 +167,22 @@ self.addEventListener('fetch', (event) => {
   // network-first navigation keeps a deployed update fresh while preserving
   // the cached app shell for offline launches.
   if (request.mode === 'navigate') {
+    const requestedPath = new URL(request.url).pathname.replace(/\\/+$/, '');
+    const downloadsPath = (APP_BASE + 'downloads').replace(/\\/+$/, '');
+    if (requestedPath === downloadsPath) {
+      event.respondWith(
+        caches.match(DOWNLOADS_URL).catch(() => undefined)
+          .then((cached) => withoutRedirect(cached) || fetch(DOWNLOADS_URL, { cache: 'no-store' }))
+          .then((response) => {
+            const safeResponse = withoutRedirect(response);
+            if (!safeResponse || !safeResponse.ok) throw new Error('Downloads response cannot be served by the service worker.');
+            void caches.open(CACHE_NAME).then((cache) => cacheResponse(cache, DOWNLOADS_URL, safeResponse.clone())).catch(() => undefined);
+            return safeResponse;
+          })
+          .catch(() => embeddedResponse(DOWNLOADS_URL) || offlineAppShell())
+      );
+      return;
+    }
     event.respondWith(
       fetch(request)
         .then((response) => {

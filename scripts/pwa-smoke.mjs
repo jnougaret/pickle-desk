@@ -75,7 +75,7 @@ for (const url of urls) {
     throw new Error(`Precached file is missing: ${url}`);
   }
 }
-for (const required of ['CACHE_NAME = \'pickle-desk-', 'LEGACY_CACHE_PREFIX', 'network-first', 'withoutRedirect(response)', 'cacheResponse(cache, request, response)', 'caches.match(request)', 'caches.match(INDEX_URL)']) {
+for (const required of ['CACHE_NAME = \'pickle-desk-', 'LEGACY_CACHE_PREFIX', 'DOWNLOADS_URL', 'downloadsPath', 'cache: \'no-store\'', 'network-first', 'withoutRedirect(response)', 'cacheResponse(cache, request, response)', 'caches.match(request)', 'caches.match(INDEX_URL)']) {
   if (!serviceWorker.includes(required)) throw new Error(`Service worker behavior is missing ${required}.`);
 }
 if (serviceWorker.includes('cache.addAll(PRECACHE_URLS)')) {
@@ -129,6 +129,11 @@ async function assertCacheIndependentFallback() {
   const navigation = await respond({ method: 'GET', mode: 'navigate', url: `${origin}${basePath}` });
   if (!navigation || navigation.status !== 200 || !(await navigation.text()).includes('<div id="app"></div>')) {
     throw new Error('Cache-independent offline navigation did not return the app shell.');
+  }
+
+  const downloadsNavigation = await respond({ method: 'GET', mode: 'navigate', url: `${origin}${basePath}downloads` });
+  if (!downloadsNavigation || downloadsNavigation.status !== 200 || !(await downloadsNavigation.text()).includes('Pickle Desk downloads')) {
+    throw new Error('Cache-independent downloads navigation did not return the downloads page.');
   }
 
   const scriptUrl = urls.find((url) => url.endsWith('.js'));
