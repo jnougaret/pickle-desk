@@ -534,7 +534,7 @@
     <aside class="sidebar">
 
       <div class="sidebar-tournament"><strong>{tournament.name}</strong><span class="tournament-date">{displayDate(tournament.date)}</span><span class="tournament-location">{tournament.location || 'Location not set'}</span></div>
-      <nav>{#each navItems as item}<button class:active={view === item.id} on:click={() => navigate(item.id)}><span class="nav-icon">{item.icon}</span>{item.label}</button>{/each}<button on:click={exportCurrentTournament}><span class="nav-icon">↧</span>Export</button></nav>
+      <nav>{#each navItems as item}<button class:active={view === item.id} on:click={() => navigate(item.id)}><span class="nav-icon">{item.icon}</span>{item.label}</button>{/each}<button on:click={exportCurrentTournament}><span class="nav-icon">↧</span>Export</button><button class="mobile-nav-item" on:click={closeTournament}><span class="nav-icon">‹</span>Tournaments</button><button class:confirm={deleteArmed} class="mobile-nav-item" on:click={armDeleteTournament}><span class="nav-icon">×</span>{deleteArmed ? 'Confirm deletion' : 'Delete'}</button></nav>
       <div class="sidebar-divider" aria-hidden="true"></div>
       <button class="sidebar-utility" on:click={closeTournament}>‹ All tournaments</button>
       <div class="sidebar-bottom"><button class:confirm={deleteArmed} class="sidebar-delete" on:click={armDeleteTournament}>{deleteArmed ? 'Confirm deletion' : 'Delete tournament'}</button></div>

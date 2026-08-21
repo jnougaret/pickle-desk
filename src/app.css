@@ -93,6 +93,8 @@ nav { display: flex; flex-direction: column; gap: 4px; }
 nav button { display: flex; align-items: center; gap: 12px; min-height: 39px; padding: 0 12px; color: #9fc0b8; text-align: left; background: transparent; border-radius: 8px; font-size: 15px; font-weight: 500; }
 nav button:hover { color: #fff; background: rgba(255,255,255,.07); }
 nav button.active { color: #163d3a; background: #d5eee1; font-weight: 700; }
+.mobile-nav-item { display: none; }
+.mobile-nav-item.confirm { color: #fff; background: var(--danger); font-weight: 700; }
 .nav-icon { display: inline-flex; width: 17px; justify-content: center; font-size: 16px; }
 .sidebar-divider { height: 1px; margin: 16px 11px; background: rgba(218, 241, 231, .16); }
 .sidebar-utility { display: flex; align-items: center; width: 100%; padding: 9px 11px; color: #d6eee5; text-align: left; background: rgba(255,255,255,.08); border: 1px solid rgba(214, 238, 229, .2); border-radius: 8px; font-size: 15px; font-weight: 600; box-shadow: 0 2px 8px rgba(5, 27, 27, .12); }
@@ -120,14 +122,14 @@ nav button.active { color: #163d3a; background: #d5eee1; font-weight: 700; }
 
 /* Overview */
 .overview-view { padding-top: 10px; }
-.welcome-card { display: flex; align-items: center; min-height: 140px; padding: 24px 30px; color: #effbf5; background: #165a54; border-radius: 13px; overflow: hidden; }
+.welcome-card { display: flex; align-items: center; min-height: 0; padding: 16px 24px; color: #effbf5; background: #165a54; border-radius: 13px; overflow: hidden; }
 .welcome-card .eyebrow { color: #99c9b7; }
-.welcome-card h2 { margin: 14px 0 8px; font: 700 29px 'Iowan Old Style', 'Baskerville', Georgia, serif; }
+.welcome-card h2 { margin: 8px 0 5px; font: 700 29px 'Iowan Old Style', 'Baskerville', Georgia, serif; }
 .welcome-card p { margin: 0; color: #aed2c4; font-size: 13px; }
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 10px 0; }
-.stat-card { position: relative; display: flex; flex-direction: column; min-height: 82px; padding: 13px 14px; background: #fff; border: 1px solid var(--line); border-radius: 11px; }
+.stat-card { position: relative; display: flex; flex-direction: column; min-height: 0; padding: 10px 14px 6px; background: #fff; border: 1px solid var(--line); border-radius: 11px; }
 .stat-card .stat-label { color: #97a6a1; font-size: 11px; }
-.stat-card strong { margin-top: 5px; font: 700 26px 'Iowan Old Style', 'Baskerville', Georgia, serif; }
+.stat-card strong { margin-top: 3px; font: 700 26px 'Iowan Old Style', 'Baskerville', Georgia, serif; }
 .overview-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .workflow-list { margin: 6px -18px -8px; }
 .workflow-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 18px; color: var(--ink); text-align: left; background: transparent; border-top: 1px solid #edf2ee; font-size: 14px; }
@@ -284,7 +286,7 @@ nav button.active { color: #163d3a; background: #d5eee1; font-weight: 700; }
 .bye-label, .third-place-label { font-size: 11px; }
 
 @media (max-width: 900px) { .home-shell { padding: 0 25px; }.home-hero { padding: 70px 0 80px; }.sidebar { width: 190px; }.main-content { width: calc(100% - 190px); margin-left: 190px; }.main-header, .content-section { padding-left: 28px; padding-right: 28px; }.context-bar { padding-left: 28px; padding-right: 28px; }.stat-grid { grid-template-columns: repeat(2, 1fr); }.overview-grid { grid-template-columns: 1fr; }.settings-grid { grid-template-columns: repeat(2, 1fr); }.standings-grid { grid-template-columns: 1fr; } }
-@media (max-width: 650px) { .home-shell { padding: 0 18px; }.home-actions, .section-intro { align-items: stretch; flex-direction: column; }.home-actions .button { width: 100%; }.main-header { padding: 24px 18px 18px; }.main-header h1 { font-size: 26px; }.sidebar { position: static; width: 100%; min-height: auto; padding: 14px 12px; }.app-shell { display: block; }.sidebar-tournament { display: none; }nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }nav button { justify-content: center; min-height: 34px; padding: 0 3px; font-size: 10px; }nav button .nav-icon { display: none; }.main-content { width: 100%; margin: 0; }.context-bar { margin: 0; padding: 10px 18px; }.content-section { padding: 12px 18px 40px; }.toolbar, .inline-add { flex-wrap: wrap; }.inline-add input { width: 100%; }.section-intro .toolbar { width: 100%; }.section-intro .toolbar > .button { flex: 1; }.stat-grid { gap: 8px; }.stat-card { min-height: 125px; padding: 13px; }.welcome-card { min-height: 145px; padding: 22px; }.welcome-ball { width: 70px; height: 70px; font-size: 42px; }.settings-grid { grid-template-columns: 1fr 1fr; }.division-card-top, .table-toolbar { align-items: flex-start; flex-direction: column; }.card-actions { flex-wrap: wrap; }.team-pool { display: none; }.row-actions { margin-left: auto; }.pool-settings { align-items: stretch; flex-wrap: wrap; }.setting-note { width: 100%; padding-left: 0; }.pool-grid, .sheet-preview, .bracket { grid-template-columns: 1fr; }.schedule-row { grid-template-columns: 63px 44px 1fr; gap: 8px; padding: 10px 12px; }.schedule-row .status-pill { display: none; }.score-entry { grid-template-columns: 1fr 20px 1fr; }.score-entry > .button { grid-column: 1 / -1; }.filter-bar { flex-wrap: wrap; }.filter-bar > .muted { margin-left: 0; }.playoff-status { align-items: flex-start; flex-wrap: wrap; }.playoff-note { width: 100%; margin-left: 13px; }.form-row { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .home-shell { padding: 0 18px; }.home-actions, .section-intro { align-items: stretch; flex-direction: column; }.home-actions .button { width: 100%; }.main-header { padding: 24px 18px 18px; }.main-header h1 { font-size: 26px; }.sidebar { position: static; width: 100%; min-height: auto; padding: 14px 12px; }.app-shell { display: block; }.sidebar-tournament { display: none; }.sidebar-divider, .sidebar-utility, .sidebar-bottom { display: none; }nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }nav button { justify-content: center; min-height: 34px; padding: 0 3px; font-size: 10px; }.mobile-nav-item { display: flex; }nav button .nav-icon { display: none; }.main-content { width: 100%; margin: 0; }.context-bar { margin: 0; padding: 10px 18px; }.content-section { padding: 12px 18px 40px; }.toolbar, .inline-add { flex-wrap: wrap; }.inline-add input { width: 100%; }.section-intro .toolbar { width: 100%; }.section-intro .toolbar > .button { flex: 1; }.stat-grid { gap: 8px; }.stat-card { min-height: 0; padding: 10px 12px 5px; }.welcome-card { min-height: 0; padding: 16px 18px; }.welcome-ball { width: 70px; height: 70px; font-size: 42px; }.settings-grid { grid-template-columns: 1fr 1fr; }.division-card-top, .table-toolbar { align-items: flex-start; flex-direction: column; }.card-actions { flex-wrap: wrap; }.team-pool { display: none; }.row-actions { margin-left: auto; }.pool-settings { align-items: stretch; flex-wrap: wrap; }.setting-note { width: 100%; padding-left: 0; }.pool-grid, .sheet-preview, .bracket { grid-template-columns: 1fr; }.schedule-row { grid-template-columns: 63px 44px 1fr; gap: 8px; padding: 10px 12px; }.schedule-row .status-pill { display: none; }.score-entry { grid-template-columns: 1fr 20px 1fr; }.score-entry > .button { grid-column: 1 / -1; }.filter-bar { flex-wrap: wrap; }.filter-bar > .muted { margin-left: 0; }.playoff-status { align-items: flex-start; flex-wrap: wrap; }.playoff-note { width: 100%; margin-left: 13px; }.form-row { grid-template-columns: 1fr; } }
 
 @page { size: letter; margin: .5in; }
 
@@ -464,7 +466,7 @@ nav button.active { color: #163d3a; background: #d5eee1; font-weight: 700; }
   .context-bar { font-size: 14px; }
   .context-bar label { font-size: 14px; }
   .context-bar select { min-width: 145px; font-size: 14px; }
-  .stat-card { min-height: 82px; }
+  .stat-card { min-height: 0; }
   .sheet-teams { padding-top: 38px; }
   .sheet-team-row > span { font-size: 16px; }
 }
