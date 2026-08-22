@@ -85,11 +85,11 @@ export interface WorkbookReader {
   read(file: File): Promise<ImportWorkbook>;
 }
 
-const DIVISION_HEADERS = /^(division|class|category|bracket|event|draw|flight|group)$/i;
-const TEAM_HEADERS = /^(team|team name|teamname|pair|pair name|entry|entry name)$/i;
-const PARTICIPANT_HEADERS = /^(player|player\s*(?:one|two|[a-z]|\d+)|participant|participant\s*(?:one|two|[a-z]|\d+)|partner|name|name\s*(?:one|two|[a-z]|\d+))$/i;
+const DIVISION_HEADERS = /^(division|class|category|bracket|event|draw|flight|group)(?:\s*(?:name|ish|type))?$/i;
+const TEAM_HEADERS = /^(team|team\s*name|teamname|team\s*(?:id|number|no|#)|pair|pair\s*name|pair\s*(?:id|number|no|#)|entry|entry\s*name)$/i;
+const PARTICIPANT_HEADERS = /^(?:player|player\s*(?:one|two|[a-z]|\d+)|participant|participant\s*(?:one|two|[a-z]|\d+)|partner|partner\s*(?:one|two|[a-z]|\d+|teammate)|teammate|teammate\s*(?:one|two|[a-z]|\d+)|registrant|person\s*(?:one|two|[a-z]|\d+)|name|name\s*(?:one|two|[a-z]|\d+)|p\s*[12](?:\s+(?:first|last|name))?)$/i;
 const IGNORED_HEADERS = /(email|e-mail|phone|mobile|payment|paid|timestamp|rating|seed|note|comment|status|amount|address|city|state|zip|postal|birth|date|time)/i;
-const IGNORED_SHEET_NAMES = /(instruction|readme|cover|payment|invoice|score|result|schedule|contact|email|phone)/i;
+const IGNORED_SHEET_NAMES = /(instruction|readme|cover|payment|invoice|score|result|schedule|contact|email|phone|note|info)/i;
 const TOTAL_OR_NOTE = /^(total|subtotal|grand total|notes?|instructions?|do not edit|registration information|payment information)/i;
 
 function textValue(value: unknown): string {
@@ -104,16 +104,37 @@ function headerValue(value: string): string {
   return textValue(value).replace(/[’‘`´]/g, "'").replace(/[_-]+/g, ' ');
 }
 
+function normalizedHeader(value: string): string {
+  return headerValue(value).toLocaleLowerCase().replace(/[\/+,]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function divisionDisplayValue(value: string): string {
+  return textValue(value).replace(/\s*[—–]\s*.*$/, '').trim();
+}
+
 export function normalizeImportLabel(value: string): string {
-  return headerValue(value)
-    .toLocaleLowerCase()
-    .replace(/[’‘`´]/g, "'")
-    .replace(/['’]/g, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((token) => ({ mens: 'men', womens: 'women', ladies: 'women' }[token] ?? token))
+  const raw = divisionDisplayValue(value).toLocaleLowerCase().replace(/[’‘`´']/g, '');
+  const rawTokens: string[] = raw.match(/[\p{L}]+|\d+(?:\.\d+)?/gu) ?? [];
+  const hasShortMixed = rawTokens.includes('b') && rawTokens.includes('i');
+  return rawTokens
+    .map((token) => {
+      if (hasShortMixed && (token === 'b' || token === 'i')) return null;
+      if (/^\d+\.0+$/.test(token)) return String(Number(token));
+      return ({
+        mens: 'men',
+        womens: 'women',
+        ladies: 'women',
+        w: 'women',
+        m: 'men',
+        mxd: 'mixed',
+        mx: 'mixed',
+        beg: 'beginner',
+        beginer: 'beginner',
+        int: 'intermediate'
+      }[token] ?? token);
+    })
+    .filter((token): token is string => Boolean(token))
+    .concat(hasShortMixed ? ['beginner', 'intermediate'] : [])
     .sort()
     .join(' ');
 }
@@ -122,24 +143,45 @@ function normalizeTeamName(value: string): string {
   return headerValue(value).toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
+function normalizeTeamValue(value: string): string {
+  return textValue(value)
+    .replace(/\s*(?:\/|\+|&|\band\b)\s*/gi, ' / ')
+    .replace(/\s*,\s*/g, ' / ')
+    .replace(/(?:\s*\/\s*)+/g, ' / ')
+    .replace(/(?:\s*\/\s*)+$/g, '')
+    .replace(/^(?:\s*\/\s*)+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function isDivisionLike(value: string): boolean {
   const normalized = headerValue(value);
-  return /\b(?:mixed|men|mens|women|womens|open|singles|doubles|novice|advanced|recreational|senior|junior)\b/i.test(normalized)
-    || /\b\d(?:\.\d)?\b/.test(normalized);
+  return /\b(?:beginner|intermediate|mixed|mxd|men|mens|women|womens|open|singles|doubles|novice|advanced|recreational|senior|junior)\b/i.test(normalized)
+    || /(?:^|[\s/])(?:beg|int|b|i|m|w)(?:$|[\s/])/i.test(normalized)
+    || /\b\d+\.\d+\b/.test(normalized);
 }
 
 function isIgnoredRow(value: string): boolean {
-  return TOTAL_OR_NOTE.test(value) || /^https?:\/\//i.test(value) || /@/.test(value);
+  return TOTAL_OR_NOTE.test(value) || /^(?:note|notes|instruction|instructions)\s*:/i.test(value) || /^https?:\/\//i.test(value) || /@/.test(value);
 }
 
 function roleForHeader(value: string): 'division' | 'team' | 'participant' | 'ignored' | null {
-  const normalized = headerValue(value);
+  const normalized = normalizedHeader(value);
   if (!normalized) return null;
   if (DIVISION_HEADERS.test(normalized)) return 'division';
-  if (TEAM_HEADERS.test(normalized)) return 'team';
+  if (TEAM_HEADERS.test(normalized) || /^team(?:\s+players)?$/i.test(normalized)) return 'team';
   if (PARTICIPANT_HEADERS.test(normalized)) return 'participant';
   if (IGNORED_HEADERS.test(normalized)) return 'ignored';
   return null;
+}
+
+function isTeamIdentifierHeader(value: string): boolean {
+  const normalized = normalizedHeader(value);
+  return /^(?:#|no|number|id|team\s*(?:id|number|no|#)|entry\s*(?:id|number|no|#)|registration\s*(?:id|number|no|#))$/i.test(normalized);
+}
+
+function isIdentifierValue(value: string): boolean {
+  return /^(?:#?\d+|[a-z]{1,4}[-_ ]?\d+)$/i.test(textValue(value));
 }
 
 function rowNumber(sheet: ImportSheet, index: number): number {
@@ -154,25 +196,34 @@ function rowPreview(row: string[]): string {
   return nonEmptyCells(row).map(({ value }) => value).join(' · ').slice(0, 180);
 }
 
-function rowHasHeaderShape(row: string[]): boolean {
-  return row.some((value) => roleForHeader(value) !== null);
-}
-
 function looksLikeRepeatedHeader(row: string[]): boolean {
   const roles = row.map(roleForHeader).filter(Boolean);
-  return roles.length >= 2 || (roles.length === 1 && rowHasHeaderShape(row));
+  return roles.length >= 2 || (roles.length === 1 && roles[0] !== 'ignored');
 }
 
 function isSheetDivisionCandidate(name: string, divisions: Division[]): boolean {
   return isDivisionLike(name) || divisions.some((division) => normalizeImportLabel(division.name) === normalizeImportLabel(name));
 }
 
-function teamFromCells(row: string[], columns?: number[]): { team: string; sourceColumns: number[]; joined: boolean } {
+function teamFromCells(row: string[], columns?: number[], groups?: number[][]): { team: string; sourceColumns: number[]; joined: boolean } {
+  if (groups?.length) {
+    const names = groups.map((group) => group
+      .map((column) => textValue(row[column]))
+      .filter((value) => Boolean(value) && !isIgnoredRow(value))
+      .join(' '))
+      .map(normalizeTeamValue)
+      .filter(Boolean);
+    return {
+      team: normalizeTeamValue(names.join(' / ')),
+      sourceColumns: groups.flat().filter((column) => Boolean(textValue(row[column]))).map((column) => column + 1),
+      joined: names.length > 1
+    };
+  }
   const selected = (columns ?? row.map((_, index) => index))
     .map((column) => ({ value: textValue(row[column]), column }))
     .filter(({ value }) => Boolean(value) && !isIgnoredRow(value));
   return {
-    team: selected.map(({ value }) => value).join(' / '),
+    team: normalizeTeamValue(selected.map(({ value }) => value).join(' / ')),
     sourceColumns: selected.map(({ column }) => column + 1),
     joined: selected.length > 1
   };
@@ -182,6 +233,55 @@ interface HeaderAnalysis {
   index: number;
   roles: Map<number, 'division' | 'team' | 'participant' | 'ignored'>;
   score: number;
+}
+
+function participantGroupKey(value: string): string | null {
+  const normalized = normalizedHeader(value);
+  if (/\b(?:p|player|participant|partner|teammate|person|name)\s*(?:one|1|a)\b/i.test(normalized) || /^p\s*1\b/i.test(normalized)) return '1';
+  if (/\b(?:p|player|participant|partner|teammate|person|name)\s*(?:two|2|b)\b/i.test(normalized) || /^p\s*2\b/i.test(normalized)) return '2';
+  if (/\b(?:first|last)\b/i.test(normalized)) return normalized.replace(/\b(?:first|last)\b/g, '').trim() || null;
+  return null;
+}
+
+function participantGroups(sheet: ImportSheet, header: HeaderAnalysis, columns: number[]): number[][] {
+  const groups = new Map<string, number[]>();
+  let unnamedGroup = 0;
+  for (const column of columns) {
+    const key = participantGroupKey(sheet.rows[header.index][column]) ?? `column-${unnamedGroup++}`;
+    const group = groups.get(key) ?? [];
+    group.push(column);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
+function participantGroupsForHeaderRow(row: string[]): { roles: Map<number, 'division' | 'team' | 'participant' | 'ignored'>; groups: number[][] } {
+  const roles = new Map<number, 'division' | 'team' | 'participant' | 'ignored'>();
+  for (const [column, value] of row.entries()) {
+    const role = roleForHeader(value);
+    if (role) roles.set(column, role);
+  }
+  const columns = [...roles.entries()].filter(([, role]) => role === 'participant').map(([column]) => column);
+  const groups = new Map<string, number[]>();
+  let unnamedGroup = 0;
+  for (const column of columns) {
+    const key = participantGroupKey(row[column]) ?? `column-${unnamedGroup++}`;
+    const group = groups.get(key) ?? [];
+    group.push(column);
+    groups.set(key, group);
+  }
+  return { roles, groups: [...groups.values()] };
+}
+
+function participantGroupsForColumns(row: string[], columns: number[]): number[][] {
+  const groups = new Map<string, number[]>();
+  for (const column of columns) {
+    const key = participantGroupKey(row[column]) ?? `column-${column}`;
+    const group = groups.get(key) ?? [];
+    group.push(column);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
 }
 
 function findHeader(sheet: ImportSheet): HeaderAnalysis | null {
@@ -217,7 +317,7 @@ function findDivisionHeader(sheet: ImportSheet): { index: number; columns: numbe
 }
 
 function candidateDivisionName(value: string, sheet: ImportSheet, divisions: Division[]): { value: string; reason: string } | null {
-  const explicit = textValue(value);
+  const explicit = divisionDisplayValue(value);
   if (explicit) return { value: explicit, reason: 'Read the division from a column or section label.' };
   if (isSheetDivisionCandidate(sheet.name, divisions)) return { value: sheet.name, reason: 'Used the sheet name as the division.' };
   return null;
@@ -261,6 +361,12 @@ function buildStandardRows(
   const divisionColumn = [...header.roles.entries()].find(([, role]) => role === 'division')?.[0];
   const teamColumn = [...header.roles.entries()].find(([, role]) => role === 'team')?.[0];
   const participantColumns = [...header.roles.entries()].filter(([, role]) => role === 'participant').map(([column]) => column);
+  const participantColumnGroups = participantGroups(sheet, header, participantColumns);
+  const dataRows = sheet.rows.slice(header.index + 1);
+  const teamIdentifier = teamColumn !== undefined && participantColumns.length > 0 && (
+    isTeamIdentifierHeader(sheet.rows[header.index][teamColumn])
+    || dataRows.some((row) => isIdentifierValue(row[teamColumn]))
+  );
   const ignoredColumns = [...header.roles.entries()]
     .filter(([, role]) => role === 'ignored')
     .map(([column]) => ({ column: column + 1, header: textValue(sheet.rows[header.index][column]), reason: 'Contact, payment, rating, or other metadata is not imported.' }));
@@ -275,7 +381,10 @@ function buildStandardRows(
     ignoredColumns,
     foundRows: 0
   };
-  const rows: CanonicalImportRow[] = [];
+  type ParsedRow = { index: number; division: string; team: string; teamId?: string; sourceColumns: number[]; joined: boolean };
+  type GroupedRows = { index: number; division: string; teamId: string; names: string[]; sourceColumns: Set<number> };
+  const parsedRows: ParsedRow[] = [];
+  const groupedRows = new Map<string, GroupedRows>();
   let previousDivision = '';
   for (let index = 0; index < header.index; index += 1) {
     const cells = nonEmptyCells(sheet.rows[index]);
@@ -289,24 +398,60 @@ function buildStandardRows(
     const explicitDivision = divisionColumn === undefined ? '' : textValue(sheet.rows[index][divisionColumn]);
     if (explicitDivision) previousDivision = explicitDivision;
     const division = candidateDivisionName(explicitDivision || previousDivision, sheet, divisions);
-    const teamData = teamColumn !== undefined
+    const participantData = participantColumns.length
+      ? teamFromCells(sheet.rows[index], undefined, participantColumnGroups)
+      : { team: '', sourceColumns: [], joined: false };
+    const teamData = teamColumn !== undefined && !teamIdentifier
       ? teamFromCells(sheet.rows[index], [teamColumn])
-      : teamFromCells(sheet.rows[index], participantColumns.length ? participantColumns : undefined);
+      : participantData.team
+        ? participantData
+        : teamColumn !== undefined ? teamFromCells(sheet.rows[index], [teamColumn]) : participantData;
     if (!teamData.team && !division) {
       addIgnored(ignoredRows, sheet, index, sourceCells.map(({ column }) => column + 1), 'No division or team value could be identified.');
       continue;
     }
+    const parsed: ParsedRow = { index, division: division?.value ?? '', team: teamData.team, teamId: teamIdentifier ? textValue(sheet.rows[index][teamColumn!]) : undefined, sourceColumns: teamData.sourceColumns, joined: teamData.joined };
+    if (teamIdentifier && parsed.teamId) {
+      const key = `${normalizeImportLabel(parsed.division)}|${normalizeTeamName(parsed.teamId)}`;
+      const existing = groupedRows.get(key);
+      if (existing) {
+        if (parsed.team) existing.names.push(parsed.team);
+        parsed.sourceColumns.forEach((column) => existing.sourceColumns.add(column));
+      } else {
+        groupedRows.set(key, { index, division: parsed.division, teamId: parsed.teamId, names: parsed.team ? [parsed.team] : [], sourceColumns: new Set(parsed.sourceColumns) });
+      }
+    } else parsedRows.push(parsed);
+  }
+  const rows: CanonicalImportRow[] = [];
+  const materializedRows: ParsedRow[] = [
+    ...parsedRows,
+    ...[...groupedRows.values()].map((group) => ({
+      index: group.index,
+      division: group.division,
+      team: normalizeTeamValue([...new Set(group.names)].join(' / ')) || group.teamId,
+      sourceColumns: [...group.sourceColumns],
+      joined: group.names.length > 1
+    }))
+  ].sort((a, b) => a.index - b.index);
+  for (const item of materializedRows) {
+    const division = item.division ? candidateDivisionName(item.division, sheet, divisions) : null;
     const reasons = [division?.reason ?? 'A division still needs to be selected.'];
-    if (teamColumn !== undefined) reasons.push('Used the explicit team column.');
-    else if (participantColumns.length === 1) reasons.push('Used the participant/name column as the team name.');
-    else if (teamData.joined) reasons.push('Joined participant columns with “ / ”.');
+    if (teamIdentifier) {
+      reasons.push('Combined participant rows that shared the same team identifier.');
+    } else if (teamColumn !== undefined) {
+      reasons.push('Used the explicit team column.');
+    } else if (participantColumns.length === 1) {
+      reasons.push('Used the participant/name column as the team name.');
+    } else if (item.joined) {
+      reasons.push('Joined participant columns with “ / ”.');
+    }
     const warnings = [...(selected ? [] : ['This sheet is not selected for import.'])];
     if (!division) warnings.push('Choose a division before importing this row.');
-    if (!teamData.team) warnings.push('Choose or enter a team name before importing this row.');
-    const confidence: ImportConfidence = division && teamData.team
-      ? divisionColumn !== undefined && (teamColumn !== undefined || participantColumns.length > 0) ? 'high' : 'medium'
+    if (!item.team) warnings.push('Choose or enter a team name before importing this row.');
+    const confidence: ImportConfidence = division && item.team
+      ? divisionColumn !== undefined || teamColumn !== undefined || participantColumns.length > 0 ? 'high' : 'medium'
       : 'low';
-    rows.push(createRow(sheet, index, teamData.sourceColumns, division?.value ?? '', teamData.team, confidence, reasons, warnings, selected));
+    rows.push(createRow(sheet, item.index, item.sourceColumns, division?.value ?? '', item.team, confidence, reasons, warnings, selected));
     mapping.foundRows += 1;
   }
   return { rows, mapping };
@@ -320,12 +465,17 @@ function buildDivisionColumnRows(
 ): { rows: CanonicalImportRow[]; mapping: SheetMapping } {
   const rows: CanonicalImportRow[] = [];
   const headers = sheet.rows[divisionHeader.index];
+  const possibleHeaderIndex = divisionHeader.index + 1 < sheet.rows.length ? divisionHeader.index + 1 : divisionHeader.index;
+  const possibleHeader = participantGroupsForHeaderRow(sheet.rows[possibleHeaderIndex]);
+  const hasBlockHeader = [...possibleHeader.roles.values()].some((role) => role === 'participant' || role === 'team' || role === 'ignored');
+  const blockHeaderIndex = hasBlockHeader ? possibleHeaderIndex : divisionHeader.index;
+  const blockHeaders = participantGroupsForHeaderRow(sheet.rows[blockHeaderIndex]);
   const mapping: SheetMapping = {
     sheet: sheet.name,
     selected,
     layout: 'Division names as column headers',
     headerRow: rowNumber(sheet, divisionHeader.index),
-    participantColumns: [],
+    participantColumns: divisionHeader.columns.map((column) => column + 1),
     ignoredColumns: [],
     foundRows: 0
   };
@@ -333,14 +483,25 @@ function buildDivisionColumnRows(
     const cells = nonEmptyCells(sheet.rows[index]);
     if (cells.length) addIgnored(ignoredRows, sheet, index, cells.map(({ column }) => column + 1), 'Title or preamble row.');
   }
-  for (let index = divisionHeader.index + 1; index < sheet.rows.length; index += 1) {
+  if (hasBlockHeader) addIgnored(ignoredRows, sheet, blockHeaderIndex, nonEmptyCells(sheet.rows[blockHeaderIndex]).map(({ column }) => column + 1), 'Repeated header row.');
+  for (let index = blockHeaderIndex + 1; index < sheet.rows.length; index += 1) {
     const row = sheet.rows[index];
     if (!nonEmptyCells(row).length) continue;
-    for (const column of divisionHeader.columns) {
-      const team = textValue(row[column]);
-      if (!team) continue;
-      if (isIgnoredRow(team)) { addIgnored(ignoredRows, sheet, index, [column + 1], 'Instruction or total cell.'); continue; }
-      rows.push(createRow(sheet, index, [column + 1], textValue(headers[column]), team, 'high', ['Used the division name from the column header.'], selected ? [] : ['This sheet is not selected for import.'], selected));
+    for (let blockIndex = 0; blockIndex < divisionHeader.columns.length; blockIndex += 1) {
+      const start = divisionHeader.columns[blockIndex];
+      const end = divisionHeader.columns[blockIndex + 1] ?? (hasBlockHeader ? row.length : start + 1);
+      const blockColumns = Array.from({ length: Math.max(0, end - start) }, (_, offset) => start + offset);
+      const headerRoles = blockColumns.map((column) => [column, blockHeaders.roles.get(column)] as const);
+      const participantColumns = headerRoles.filter(([, role]) => role === 'participant').map(([column]) => column);
+      const columns = participantColumns.length ? participantColumns : blockColumns.filter((column) => Boolean(textValue(row[column])) && !isIgnoredRow(textValue(row[column])));
+      const groups = participantColumns.length
+        ? participantGroupsForColumns(sheet.rows[blockHeaderIndex], participantColumns)
+        : undefined;
+      const teamData = teamFromCells(row, columns, groups);
+      if (!teamData.team) continue;
+      const division = candidateDivisionName(headers[start], sheet, []);
+      if (!division) continue;
+      rows.push(createRow(sheet, index, teamData.sourceColumns, division.value, teamData.team, 'high', ['Used the division name from the column header.', ...(teamData.joined ? ['Joined participant columns with “ / ”.'] : [])], selected ? [] : ['This sheet is not selected for import.'], selected));
       mapping.foundRows += 1;
     }
   }
@@ -361,6 +522,9 @@ function buildSectionRows(
   const sheetDivision = isSheetDivisionCandidate(sheet.name, divisions) ? sheet.name : '';
   let currentDivision = sheetDivision;
   let markerIndex = -1;
+  let sectionHeaderIndex = -1;
+  let sectionColumns: number[] | undefined;
+  let sectionGroups: number[][] | undefined;
   const mapping: SheetMapping = {
     sheet: sheet.name,
     selected,
@@ -373,6 +537,10 @@ function buildSectionRows(
     const cells = nonEmptyCells(sheet.rows[index]);
     if (!cells.length) continue;
     const value = textValue(sheet.rows[index][usableColumn]) || cells[0].value;
+    if (!currentDivision && /^(?:please|note|updated|instructions?|thanks|thank you)\b|\b(?:tournament|registration|sign ups?)\b/i.test(value)) {
+      addIgnored(ignoredRows, sheet, index, cells.map(({ column }) => column + 1), 'Title or preamble row.');
+      continue;
+    }
     if (looksLikeRepeatedHeader(sheet.rows[index])) { addIgnored(ignoredRows, sheet, index, cells.map(({ column }) => column + 1), 'Header or instruction row.'); continue; }
     if (isIgnoredRow(value)) { addIgnored(ignoredRows, sheet, index, [usableColumn + 1], 'Instruction, contact, or total row.'); continue; }
     const hasSupportingTeam = sheet.rows.slice(index + 1, index + 4).some((next) => {
@@ -381,12 +549,32 @@ function buildSectionRows(
     });
     const isMarker = Boolean(value) && (isDivisionLike(value) || divisions.some((division) => normalizeImportLabel(division.name) === normalizeImportLabel(value))) && hasSupportingTeam;
     if (isMarker) {
-      currentDivision = value;
+      currentDivision = divisionDisplayValue(value);
       markerIndex = index;
+      sectionHeaderIndex = -1;
+      sectionColumns = undefined;
+      sectionGroups = undefined;
+      for (let candidateIndex = index + 1; candidateIndex < Math.min(sheet.rows.length, index + 4); candidateIndex += 1) {
+        if (!nonEmptyCells(sheet.rows[candidateIndex]).length) continue;
+        const candidate = participantGroupsForHeaderRow(sheet.rows[candidateIndex]);
+        const participantColumns = [...candidate.roles.entries()].filter(([, role]) => role === 'participant').map(([column]) => column);
+        const teamColumn = [...candidate.roles.entries()].find(([, role]) => role === 'team')?.[0];
+        if (participantColumns.length || teamColumn !== undefined) {
+          sectionHeaderIndex = candidateIndex;
+          sectionGroups = candidate.groups.length ? candidate.groups : undefined;
+          sectionColumns = participantColumns.length ? participantColumns : teamColumn === undefined ? undefined : [teamColumn];
+          addIgnored(ignoredRows, sheet, candidateIndex, nonEmptyCells(sheet.rows[candidateIndex]).map(({ column }) => column + 1), 'Section header row.');
+          break;
+        }
+      }
       continue;
     }
-    if (index === markerIndex) continue;
-    const teamData = teamFromCells(sheet.rows[index]);
+    if (index === markerIndex || index === sectionHeaderIndex) continue;
+    const teamData = sectionGroups
+      ? teamFromCells(sheet.rows[index], undefined, sectionGroups)
+      : sectionColumns
+        ? teamFromCells(sheet.rows[index], sectionColumns)
+        : teamFromCells(sheet.rows[index]);
     if (!teamData.team) continue;
     const division = currentDivision;
     const warnings = [...(selected ? [] : ['This sheet is not selected for import.'])];
@@ -405,6 +593,10 @@ function buildSectionRows(
 function inferSheet(sheet: ImportSheet, divisions: Division[], ignoredRows: IgnoredImportRow[]): { rows: CanonicalImportRow[]; mapping: SheetMapping; ignored?: { sheet: string; reason: string } } {
   const ignoredByName = IGNORED_SHEET_NAMES.test(sheet.name);
   const selected = !sheet.hidden && !ignoredByName;
+  if (ignoredByName) {
+    const mapping: SheetMapping = { sheet: sheet.name, selected: false, layout: 'Ignored sheet', participantColumns: [], ignoredColumns: [], foundRows: 0, reason: 'The sheet name suggests notes, instructions, scores, or unrelated data.' };
+    return { rows: [], mapping, ignored: { sheet: sheet.name, reason: mapping.reason! } };
+  }
   if (!sheet.rows.length) {
     const mapping: SheetMapping = { sheet: sheet.name, selected: false, layout: 'Empty sheet', participantColumns: [], ignoredColumns: [], foundRows: 0, reason: 'The sheet has no values.' };
     return { rows: [], mapping, ignored: { sheet: sheet.name, reason: mapping.reason! } };
@@ -432,9 +624,21 @@ function inferSheet(sheet: ImportSheet, divisions: Division[], ignoredRows: Igno
   return result;
 }
 
+function preferredDivisionName(value: string): string {
+  const clean = divisionDisplayValue(value);
+  const key = normalizeImportLabel(clean);
+  if (key === 'beginner') return 'Beginner';
+  if (key === 'beginner intermediate') return 'Beginner/Intermediate';
+  const rating = clean.match(/\d+(?:\.\d+)?/)?.[0];
+  if (rating && key.endsWith(' men')) return `Men's ${rating}`;
+  if (rating && key.endsWith(' women')) return `Women's ${rating}`;
+  if (rating && key.endsWith(' mixed')) return `Mixed ${rating.includes('.') ? rating : `${rating}.0`}`;
+  return clean;
+}
+
 function reconcileRows(rows: CanonicalImportRow[], divisions: Division[], teams: Team[]): { rows: CanonicalImportRow[]; newDivisions: string[] } {
   const divisionByKey = new Map(divisions.map((division) => [normalizeImportLabel(division.name), division.name]));
-  const newDivisions = new Set<string>();
+  const newDivisions = new Map<string, string>();
   const seen = new Set<string>();
   const existing = new Set(teams.map((team) => {
     const division = divisions.find((item) => item.id === team.divisionId);
@@ -447,7 +651,13 @@ function reconcileRows(rows: CanonicalImportRow[], divisions: Division[], teams:
       if (matched) {
         next.division = matched;
         next.reasons.push('Matched an existing division after normalizing case, punctuation, and word order.');
-      } else newDivisions.add(next.division);
+      } else {
+        const key = normalizeImportLabel(next.division);
+        const preferred = newDivisions.get(key) ?? preferredDivisionName(next.division);
+        newDivisions.set(key, preferred);
+        next.division = preferred;
+        if (preferred !== row.division) next.reasons.push('Normalized a common division abbreviation or spelling variation.');
+      }
     }
     if (next.division && next.team) {
       const key = `${normalizeImportLabel(next.division)}|${normalizeTeamName(next.team)}`;
@@ -463,7 +673,7 @@ function reconcileRows(rows: CanonicalImportRow[], divisions: Division[], teams:
     }
     return next;
   });
-  return { rows: reconciled, newDivisions: [...newDivisions] };
+  return { rows: reconciled, newDivisions: [...newDivisions.values()] };
 }
 
 function validateLimits(workbook: ImportWorkbook): string[] {
@@ -557,14 +767,18 @@ export async function inspectImportFile(file: File, divisions: Division[], teams
 
 export function summarizeImportReview(review: ImportReview, divisions: Division[]): ImportSummary {
   const known = new Set(divisions.map((division) => normalizeImportLabel(division.name)));
-  const newDivisions = [...new Set(review.rows.filter((row) => row.included && row.division).map((row) => row.division.trim()).filter((name) => !known.has(normalizeImportLabel(name))))];
+  const newDivisionNames = new Map<string, string>();
+  for (const name of review.rows.filter((row) => row.included && row.division).map((row) => row.division.trim())) {
+    const key = normalizeImportLabel(name);
+    if (!known.has(key) && !newDivisionNames.has(key)) newDivisionNames.set(key, preferredDivisionName(name));
+  }
   return {
     ready: review.rows.filter((row) => row.included && row.division.trim() && row.team.trim()).length,
     warningRows: review.rows.filter((row) => row.warnings.length > 0).length,
     duplicates: review.rows.filter((row) => Boolean(row.duplicate)).length,
     unresolved: review.rows.filter((row) => row.included && (!row.division.trim() || !row.team.trim())).length,
     ignored: review.ignoredRows.length + review.rows.filter((row) => !row.included).length,
-    newDivisions
+    newDivisions: [...newDivisionNames.values()]
   };
 }
 

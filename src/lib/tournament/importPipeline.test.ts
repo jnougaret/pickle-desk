@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commitImportReview, inspectImportFile, inspectImportText, reviewImportWorkbook, type ImportWorkbook } from './importPipeline';
+import { commitImportReview, inspectImportFile, inspectImportText, reviewImportWorkbook, summarizeImportReview, type ImportWorkbook } from './importPipeline';
 import type { Division, Team } from './types';
 
 function division(id: string, name: string): Division {
@@ -97,5 +97,69 @@ describe('team import pipeline', () => {
     const review = await inspectImportFile(file, [], []);
     expect(review.errors).toEqual([]);
     expect(review.rows[0]).toMatchObject({ division: 'Mixed 3.5', team: 'Smith / Jones', source: { sheet: 'Registrations', row: 2 }, included: true });
+  });
+
+  it('combines one-player-per-row registrations by team identifier and normalizes division aliases', () => {
+    const review = inspectImportText([
+      'Team,Player,Division,Paid?',
+      'T1,Ruby Hayes,Beg/Int,yes',
+      'T1,Theo Martinez,Beginner-Intermediate,yes',
+      'T2,Paige Sullivan,B/I,yes',
+      'T2,Leo Murphy,Beg/Int,yes',
+      'T3,Hannah Lewis,W 3.5,yes',
+      'T3,Brooke Adams,Womens 3.5,yes'
+    ].join('\n'), [], []);
+
+    expect(review.rows.map((row) => [row.division, row.team, row.included])).toEqual([
+      ['Beginner/Intermediate', 'Ruby Hayes / Theo Martinez', true],
+      ['Beginner/Intermediate', 'Paige Sullivan / Leo Murphy', true],
+      ["Women's 3.5", 'Hannah Lewis / Brooke Adams', true]
+    ]);
+    expect(summarizeImportReview(review, []).newDivisions).toEqual(['Beginner/Intermediate', "Women's 3.5"]);
+  });
+
+  it('handles local section headers, horizontal division blocks, metadata, and ignored sheets', () => {
+    const review = reviewImportWorkbook(workbook([
+      { name: 'Sign ups', rows: [
+        ['Tournament team sign ups'],
+        ['Beginner'],
+        ['#', 'Name', 'Partner', 'Paid'],
+        ['1', 'Maya Bennett', 'Lucas Harper', 'x'],
+        ['2', 'Nina Patel', 'Owen Brooks', 'x'],
+        ['Advanced — notes about the division'],
+        ['Alex Morgan', 'Sam Rivera']
+      ] },
+      { name: 'Roster', rows: [
+        ['Beginner', '', '', 'Beginner/Intermediate', '', '', 'Mixed 4.0', ''],
+        ['Player 1', 'Player 2', '', 'Player 1', 'Player 2', '', 'Player 1', 'Player 2'],
+        ['Maya Bennett', 'Lucas Harper', '', 'Ruby Hayes', 'Theo Martinez', '', 'Ana María Santos', 'Michael Chen']
+      ] },
+      { name: 'Notes', rows: [['Notes'], ['Do not import this row']] }
+    ]), [], []);
+
+    expect(review.rows.filter((row) => row.included).map((row) => `${row.division}:${row.team}`)).toEqual([
+      'Beginner:Maya Bennett / Lucas Harper',
+      'Beginner:Nina Patel / Owen Brooks',
+      'Advanced:Alex Morgan / Sam Rivera',
+      'Beginner/Intermediate:Ruby Hayes / Theo Martinez',
+      'Mixed 4.0:Ana María Santos / Michael Chen'
+    ]);
+    expect(review.mappings.find((mapping) => mapping.sheet === 'Notes')).toMatchObject({ selected: false, layout: 'Ignored sheet', foundRows: 0 });
+    expect(review.ignoredSheets.map((item) => item.sheet)).toContain('Notes');
+  });
+
+  it('normalizes messy partner separators, ignores metadata, and flags duplicate teams', () => {
+    const review = reviewImportWorkbook(workbook([{ name: 'FINAL list', rows: [
+      ['Division-ish', 'Team / Players', 'Fee', 'Contact', 'Status'],
+      ['beg', 'Maya Bennett + Lucas Harper', '$40', 'maya@example.com', 'PAID'],
+      ['Beginner', 'Nina Patel and Owen Brooks', '40', '207-555-0100', 'paid'],
+      ['beginer', 'Maya Bennett / Lucas Harper', '$40', '', 'paid']
+    ] }]), [], []);
+
+    expect(review.rows.map((row) => ({ division: row.division, team: row.team, included: row.included, duplicate: row.duplicate }))).toEqual([
+      { division: 'Beginner', team: 'Maya Bennett / Lucas Harper', included: true, duplicate: undefined },
+      { division: 'Beginner', team: 'Nina Patel / Owen Brooks', included: true, duplicate: undefined },
+      { division: 'Beginner', team: 'Maya Bennett / Lucas Harper', included: false, duplicate: 'source' }
+    ]);
   });
 });
