@@ -31,7 +31,8 @@
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
     "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/plugin-sql": "^2.4.0"
+    "@tauri-apps/plugin-sql": "^2.4.0",
+    "pdfjs-dist": "^4.10.38"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,

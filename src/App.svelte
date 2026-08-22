@@ -665,15 +665,15 @@
       <div class="modal-header">
         <div>
           <div class="eyebrow">TEAM IMPORT</div>
-          <h2>Bring in a registration list</h2>
-          <p class="modal-help">Choose a CSV or spreadsheet. Pickle Desk inspects it locally and asks you to confirm the rows before changing the tournament.</p>
+          <h2>Import Teams</h2>
+          <p class="modal-help">Upload a roster in almost any spreadsheet or PDF layout. Pickle Desk inspects it locally, ignores unrelated details, groups unlabeled sections when it can, and asks you to confirm the teams before changing the tournament.</p>
         </div>
         <button class="close-button" on:click={closeImport}>×</button>
       </div>
       <div class="modal-body">
         <div class="import-upload">
-          <div><strong>{importFileName || 'Import a file'}</strong><span class="import-file-help">CSV, XLSX, or XLS · up to 10 MB</span></div>
-          <label class="button button-secondary">Choose file<input type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" on:change={handleImportFile} /></label>
+          <div><strong>{importFileName || 'Import a file'}</strong><span class="import-file-help">CSV, XLSX, XLS, or PDF · up to 10 MB</span></div>
+          <label class="button button-secondary">Choose file<input type="file" accept=".csv,.xlsx,.xls,.pdf,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" on:change={handleImportFile} /></label>
         </div>
         <label class="import-paste-label">Paste CSV or table<textarea rows="6" bind:value={importText} aria-label="CSV or table import contents" placeholder="division,team&#10;Mixed 3.5,Smith / Jones"></textarea></label>
         <button class="text-button" disabled={importBusy || !importText.trim()} on:click={previewImport}>{importBusy ? 'Inspecting…' : 'Preview pasted data'}</button>

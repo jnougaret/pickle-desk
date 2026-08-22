@@ -40,6 +40,8 @@ export interface CanonicalImportRow {
   warnings: string[];
   included: boolean;
   duplicate?: 'source' | 'existing';
+  /** Internal grouping key used when a source does not provide division labels. */
+  fallbackGroup?: string;
 }
 
 export interface IgnoredImportRow {
@@ -85,10 +87,10 @@ export interface WorkbookReader {
   read(file: File): Promise<ImportWorkbook>;
 }
 
-const DIVISION_HEADERS = /^(division|class|category|bracket|event|draw|flight|group)(?:\s*(?:name|ish|type))?$/i;
-const TEAM_HEADERS = /^(team|team\s*name|teamname|team\s*(?:id|number|no|#)|pair|pair\s*name|pair\s*(?:id|number|no|#)|entry|entry\s*name)$/i;
-const PARTICIPANT_HEADERS = /^(?:player|player\s*(?:one|two|[a-z]|\d+)|participant|participant\s*(?:one|two|[a-z]|\d+)|partner|partner\s*(?:one|two|[a-z]|\d+|teammate)|teammate|teammate\s*(?:one|two|[a-z]|\d+)|registrant|person\s*(?:one|two|[a-z]|\d+)|name|name\s*(?:one|two|[a-z]|\d+)|p\s*[12](?:\s+(?:first|last|name))?)$/i;
-const IGNORED_HEADERS = /(email|e-mail|phone|mobile|payment|paid|timestamp|rating|seed|note|comment|status|amount|address|city|state|zip|postal|birth|date|time)/i;
+const DIVISION_HEADERS = /^(division|division\s*(?:name|ish|type)|class|category|category\s*name|bracket|event|event\s*division|draw|flight|group|level|skill\s*level)$/i;
+const TEAM_HEADERS = /^(team|team\s*name|teamname|team\s*(?:entry|id|number|no|#|players?)|registration\s*(?:team|id|number|no|#)|pair|pair\s*name|pair\s*(?:id|number|no|#)|entry|entry\s*(?:name|id|number|no|#)|roster)$/i;
+const PARTICIPANT_HEADERS = /^(?:(?:player|participant|partner|teammate|registrant|person|name)(?:\s*(?:one|two|[a-z]|\d+))?(?:\s+(?:first|last)(?:\s+name)?|\s+name)?|first\s*name|last\s*name|p\s*[12](?:\s+(?:first|last)(?:\s+name)?|\s+name)?)$/i;
+const IGNORED_HEADERS = /(email|e-mail|phone|mobile|text|sms|payment|paid|fee|dupr|rating|skill|gender|sex|seed|note|comment|status|amount|address|city|state|zip|postal|birth|date|time|timestamp|waiver|shirt|emergency|contact|id|url|instagram|facebook)/i;
 const IGNORED_SHEET_NAMES = /(instruction|readme|cover|payment|invoice|score|result|schedule|contact|email|phone|note|info)/i;
 const TOTAL_OR_NOTE = /^(total|subtotal|grand total|notes?|instructions?|do not edit|registration information|payment information)/i;
 
@@ -161,8 +163,25 @@ function isDivisionLike(value: string): boolean {
     || /\b\d+\.\d+\b/.test(normalized);
 }
 
+function isDivisionSectionLabel(value: string): boolean {
+  const clean = divisionDisplayValue(value);
+  if (!clean || clean.length > 40) return false;
+  if (/\b(?:tournament|registration|sign[- ]?ups?|recreational|export|roster)\b/i.test(clean)) return false;
+  if (/^(?:group|section|wave|block|session|flight|pool|court)\s*[a-z0-9]/i.test(clean)) return false;
+  return isDivisionLike(clean);
+}
+
 function isIgnoredRow(value: string): boolean {
-  return TOTAL_OR_NOTE.test(value) || /^(?:note|notes|instruction|instructions)\s*:/i.test(value) || /^https?:\/\//i.test(value) || /@/.test(value);
+  return TOTAL_OR_NOTE.test(value) || /\b(?:total|totals|subtotal|grand total)\b/i.test(value) || /^(?:note|notes|instruction|instructions)\s*:/i.test(value) || /^https?:\/\//i.test(value) || /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/.test(value);
+}
+
+function isHardIgnoredRow(value: string): boolean {
+  return TOTAL_OR_NOTE.test(value)
+    || /\b(?:total|totals|subtotal|grand total)\b/i.test(value)
+    || /^(?:note|notes|instruction|instructions)\s*:/i.test(value)
+    || /^(?:reminder|please|do not edit|payment total|paid status|phone list)\b/i.test(value)
+    || /^(?:export|exported|generated|printed)\b/i.test(value)
+    || /\b(?:maintained by the organizer|confirm waivers)\b/i.test(value);
 }
 
 function roleForHeader(value: string): 'division' | 'team' | 'participant' | 'ignored' | null {
@@ -196,13 +215,25 @@ function rowPreview(row: string[]): string {
   return nonEmptyCells(row).map(({ value }) => value).join(' · ').slice(0, 180);
 }
 
+function fallbackGroupKey(sheet: ImportSheet, group: number): string {
+  return `${sheet.name}::${group}`;
+}
+
+function likelyGroupMarker(value: string): boolean {
+  const clean = textValue(value);
+  if (!clean || isIgnoredRow(clean) || isIdentifierValue(clean) || isDivisionSectionLabel(clean)) return false;
+  if (/[\/+,]|\band\b/i.test(clean)) return false;
+  return /^(?:group|section|wave|block|session|flight|pool|court)\s*[a-z0-9]/i.test(clean)
+    || /^(?:saturday|sunday|morning|afternoon|evening)\b/i.test(clean);
+}
+
 function looksLikeRepeatedHeader(row: string[]): boolean {
   const roles = row.map(roleForHeader).filter(Boolean);
   return roles.length >= 2 || (roles.length === 1 && roles[0] !== 'ignored');
 }
 
 function isSheetDivisionCandidate(name: string, divisions: Division[]): boolean {
-  return isDivisionLike(name) || divisions.some((division) => normalizeImportLabel(division.name) === normalizeImportLabel(name));
+  return isDivisionSectionLabel(name) || divisions.some((division) => normalizeImportLabel(division.name) === normalizeImportLabel(name));
 }
 
 function teamFromCells(row: string[], columns?: number[], groups?: number[][]): { team: string; sourceColumns: number[]; joined: boolean } {
@@ -307,11 +338,12 @@ function findDivisionHeader(sheet: ImportSheet): { index: number; columns: numbe
   const scanLimit = Math.min(sheet.rows.length - 1, 15);
   let best: { index: number; columns: number[] } | null = null;
   for (let index = 0; index <= scanLimit; index += 1) {
-    const columns = sheet.rows[index]
+    const row = sheet.rows[index];
+    const columns = row
       .map((value, column) => roleForHeader(value) ? -1 : isDivisionLike(textValue(value)) ? column : -1)
       .filter((column) => column >= 0)
       .filter((column) => sheet.rows.slice(index + 1, index + 4).some((row) => Boolean(textValue(row[column]))));
-    if (columns.length >= 2 && (!best || columns.length > best.columns.length)) best = { index, columns };
+    if (columns.length >= 2 && nonEmptyCells(row).length <= columns.length + 1 && (!best || columns.length > best.columns.length)) best = { index, columns };
   }
   return best;
 }
@@ -336,7 +368,8 @@ function createRow(
   confidence: ImportConfidence,
   reasons: string[],
   warnings: string[],
-  selected: boolean
+  selected: boolean,
+  fallbackGroup?: string
 ): CanonicalImportRow {
   const source = { sheet: sheet.name, row: rowNumber(sheet, index), columns };
   return {
@@ -347,7 +380,8 @@ function createRow(
     confidence,
     reasons,
     warnings,
-    included: selected && Boolean(division && team) && confidence !== 'low'
+    included: selected && Boolean(division && team) && confidence !== 'low',
+    fallbackGroup
   };
 }
 
@@ -381,23 +415,41 @@ function buildStandardRows(
     ignoredColumns,
     foundRows: 0
   };
-  type ParsedRow = { index: number; division: string; team: string; teamId?: string; sourceColumns: number[]; joined: boolean };
-  type GroupedRows = { index: number; division: string; teamId: string; names: string[]; sourceColumns: Set<number> };
+  type ParsedRow = { index: number; division: string; team: string; teamId?: string; sourceColumns: number[]; joined: boolean; fallbackGroup: string };
+  type GroupedRows = { index: number; division: string; teamId: string; names: string[]; sourceColumns: Set<number>; fallbackGroup: string };
   const parsedRows: ParsedRow[] = [];
   const groupedRows = new Map<string, GroupedRows>();
   let previousDivision = '';
+  let sectionDivision = '';
+  let fallbackGroupIndex = 0;
+  let dataStarted = false;
+  let previousSourceRow = 0;
   for (let index = 0; index < header.index; index += 1) {
     const cells = nonEmptyCells(sheet.rows[index]);
+    if (cells.length === 1 && isDivisionSectionLabel(cells[0].value)) {
+      sectionDivision = divisionDisplayValue(cells[0].value);
+      fallbackGroupIndex += 1;
+    }
     if (cells.length) addIgnored(ignoredRows, sheet, index, cells.map(({ column }) => column + 1), 'Title or preamble row.');
   }
   for (let index = header.index + 1; index < sheet.rows.length; index += 1) {
     const sourceCells = nonEmptyCells(sheet.rows[index]);
-    if (!sourceCells.length) continue;
-    if (looksLikeRepeatedHeader(sheet.rows[index])) { addIgnored(ignoredRows, sheet, index, sourceCells.map(({ column }) => column + 1), 'Repeated header row.'); continue; }
-    if (isIgnoredRow(sourceCells[0].value)) { addIgnored(ignoredRows, sheet, index, sourceCells.map(({ column }) => column + 1), 'Instruction, contact, or total row.'); continue; }
+    if (!sourceCells.length) {
+      if (dataStarted && divisionColumn === undefined) fallbackGroupIndex += 1;
+      continue;
+    }
+    const sourceRow = rowNumber(sheet, index);
+    if (dataStarted && divisionColumn === undefined && sourceRow > previousSourceRow + 1) {
+      fallbackGroupIndex += 1;
+    }
+    if (looksLikeRepeatedHeader(sheet.rows[index])) {
+      if (dataStarted && divisionColumn === undefined) fallbackGroupIndex += 1;
+      addIgnored(ignoredRows, sheet, index, sourceCells.map(({ column }) => column + 1), 'Repeated header row.');
+      previousSourceRow = sourceRow;
+      continue;
+    }
     const explicitDivision = divisionColumn === undefined ? '' : textValue(sheet.rows[index][divisionColumn]);
     if (explicitDivision) previousDivision = explicitDivision;
-    const division = candidateDivisionName(explicitDivision || previousDivision, sheet, divisions);
     const participantData = participantColumns.length
       ? teamFromCells(sheet.rows[index], undefined, participantColumnGroups)
       : { team: '', sourceColumns: [], joined: false };
@@ -406,21 +458,48 @@ function buildStandardRows(
       : participantData.team
         ? participantData
         : teamColumn !== undefined ? teamFromCells(sheet.rows[index], [teamColumn]) : participantData;
-    if (!teamData.team && !division) {
-      addIgnored(ignoredRows, sheet, index, sourceCells.map(({ column }) => column + 1), 'No division or team value could be identified.');
+    const markerValue = explicitDivision || (sourceCells.length === 1 ? sourceCells[0].value : '');
+    const markerTeamData = sourceCells.length === 1 && (teamIdentifier || isDivisionSectionLabel(markerValue) || likelyGroupMarker(markerValue))
+      ? { team: '', sourceColumns: [], joined: false }
+      : teamData;
+    const hasSupportingTeam = sheet.rows.slice(index + 1, index + 6).some((next) => {
+      const nextSource = nonEmptyCells(next);
+      if (!nextSource.length || looksLikeRepeatedHeader(next)) return false;
+      const nextParticipants = participantColumns.length ? teamFromCells(next, undefined, participantColumnGroups).team : '';
+      const nextTeam = teamColumn !== undefined && !teamIdentifier
+        ? teamFromCells(next, [teamColumn]).team
+        : nextParticipants || (teamColumn !== undefined ? teamFromCells(next, [teamColumn]).team : '');
+      return Boolean(nextTeam) && !isIgnoredRow(nextSource[0].value);
+    });
+    const markerIsDivision = isDivisionSectionLabel(markerValue);
+    if (!markerTeamData.team && sourceCells.length === 1 && hasSupportingTeam && (markerIsDivision || likelyGroupMarker(markerValue))) {
+      fallbackGroupIndex += 1;
+      sectionDivision = markerIsDivision ? divisionDisplayValue(markerValue) : '';
+      addIgnored(ignoredRows, sheet, index, [sourceCells[0].column + 1], markerIsDivision ? 'Division section marker.' : 'Unlabeled group marker.');
+      previousSourceRow = sourceRow;
       continue;
     }
-    const parsed: ParsedRow = { index, division: division?.value ?? '', team: teamData.team, teamId: teamIdentifier ? textValue(sheet.rows[index][teamColumn!]) : undefined, sourceColumns: teamData.sourceColumns, joined: teamData.joined };
+    if (isHardIgnoredRow(sourceCells[0].value) || (isIgnoredRow(sourceCells[0].value) && !teamData.team)) { addIgnored(ignoredRows, sheet, index, sourceCells.map(({ column }) => column + 1), 'Instruction, contact, or total row.'); previousSourceRow = sourceRow; continue; }
+    const division = candidateDivisionName(explicitDivision || previousDivision || sectionDivision, sheet, divisions);
+    if (!teamData.team && !division) {
+      addIgnored(ignoredRows, sheet, index, sourceCells.map(({ column }) => column + 1), 'No division or team value could be identified.');
+      previousSourceRow = sourceRow;
+      continue;
+    }
+    const fallbackGroup = fallbackGroupKey(sheet, fallbackGroupIndex);
+    const parsed: ParsedRow = { index, division: division?.value ?? '', team: teamData.team, teamId: teamIdentifier ? textValue(sheet.rows[index][teamColumn!]) : undefined, sourceColumns: teamData.sourceColumns, joined: teamData.joined, fallbackGroup };
     if (teamIdentifier && parsed.teamId) {
-      const key = `${normalizeImportLabel(parsed.division)}|${normalizeTeamName(parsed.teamId)}`;
+      const key = `${normalizeImportLabel(parsed.division)}|${parsed.fallbackGroup}|${normalizeTeamName(parsed.teamId)}`;
       const existing = groupedRows.get(key);
       if (existing) {
         if (parsed.team) existing.names.push(parsed.team);
         parsed.sourceColumns.forEach((column) => existing.sourceColumns.add(column));
       } else {
-        groupedRows.set(key, { index, division: parsed.division, teamId: parsed.teamId, names: parsed.team ? [parsed.team] : [], sourceColumns: new Set(parsed.sourceColumns) });
+        groupedRows.set(key, { index, division: parsed.division, teamId: parsed.teamId, names: parsed.team ? [parsed.team] : [], sourceColumns: new Set(parsed.sourceColumns), fallbackGroup: parsed.fallbackGroup });
       }
     } else parsedRows.push(parsed);
+    dataStarted = true;
+    previousSourceRow = sourceRow;
   }
   const rows: CanonicalImportRow[] = [];
   const materializedRows: ParsedRow[] = [
@@ -430,7 +509,8 @@ function buildStandardRows(
       division: group.division,
       team: normalizeTeamValue([...new Set(group.names)].join(' / ')) || group.teamId,
       sourceColumns: [...group.sourceColumns],
-      joined: group.names.length > 1
+      joined: group.names.length > 1,
+      fallbackGroup: group.fallbackGroup
     }))
   ].sort((a, b) => a.index - b.index);
   for (const item of materializedRows) {
@@ -451,7 +531,7 @@ function buildStandardRows(
     const confidence: ImportConfidence = division && item.team
       ? divisionColumn !== undefined || teamColumn !== undefined || participantColumns.length > 0 ? 'high' : 'medium'
       : 'low';
-    rows.push(createRow(sheet, item.index, item.sourceColumns, division?.value ?? '', item.team, confidence, reasons, warnings, selected));
+    rows.push(createRow(sheet, item.index, item.sourceColumns, division?.value ?? '', item.team, confidence, reasons, warnings, selected, item.fallbackGroup));
     mapping.foundRows += 1;
   }
   return { rows, mapping };
@@ -486,7 +566,12 @@ function buildDivisionColumnRows(
   if (hasBlockHeader) addIgnored(ignoredRows, sheet, blockHeaderIndex, nonEmptyCells(sheet.rows[blockHeaderIndex]).map(({ column }) => column + 1), 'Repeated header row.');
   for (let index = blockHeaderIndex + 1; index < sheet.rows.length; index += 1) {
     const row = sheet.rows[index];
-    if (!nonEmptyCells(row).length) continue;
+    const sourceCells = nonEmptyCells(row);
+    if (!sourceCells.length) continue;
+    if (looksLikeRepeatedHeader(row) || isHardIgnoredRow(sourceCells[0].value)) {
+      addIgnored(ignoredRows, sheet, index, sourceCells.map(({ column }) => column + 1), looksLikeRepeatedHeader(row) ? 'Repeated header row.' : 'Instruction, contact, or total row.');
+      continue;
+    }
     for (let blockIndex = 0; blockIndex < divisionHeader.columns.length; blockIndex += 1) {
       const start = divisionHeader.columns[blockIndex];
       const end = divisionHeader.columns[blockIndex + 1] ?? (hasBlockHeader ? row.length : start + 1);
@@ -525,6 +610,7 @@ function buildSectionRows(
   let sectionHeaderIndex = -1;
   let sectionColumns: number[] | undefined;
   let sectionGroups: number[][] | undefined;
+  let sectionGroupIndex = 0;
   const mapping: SheetMapping = {
     sheet: sheet.name,
     selected,
@@ -547,9 +633,12 @@ function buildSectionRows(
       const nextValue = textValue(next[usableColumn]) || nonEmptyCells(next)[0]?.value || '';
       return Boolean(nextValue) && !isDivisionLike(nextValue) && !isIgnoredRow(nextValue);
     });
-    const isMarker = Boolean(value) && (isDivisionLike(value) || divisions.some((division) => normalizeImportLabel(division.name) === normalizeImportLabel(value))) && hasSupportingTeam;
+    const isDivisionMarker = isDivisionSectionLabel(value) || divisions.some((division) => normalizeImportLabel(division.name) === normalizeImportLabel(value));
+    const isMarker = Boolean(value) && (isDivisionMarker || likelyGroupMarker(value)) && hasSupportingTeam;
     if (isMarker) {
+      sectionGroupIndex += 1;
       currentDivision = divisionDisplayValue(value);
+      if (!isDivisionMarker) currentDivision = '';
       markerIndex = index;
       sectionHeaderIndex = -1;
       sectionColumns = undefined;
@@ -584,7 +673,7 @@ function buildSectionRows(
       : ['Used the most recent division section marker.'];
     if (teamData.joined) reasons.push('Joined adjacent values with “ / ”.');
     const confidence: ImportConfidence = division ? (isDivisionLike(division) ? 'high' : 'medium') : 'low';
-    rows.push(createRow(sheet, index, teamData.sourceColumns, division, teamData.team, confidence, reasons, warnings, selected));
+    rows.push(createRow(sheet, index, teamData.sourceColumns, division, teamData.team, confidence, reasons, warnings, selected, fallbackGroupKey(sheet, sectionGroupIndex)));
     mapping.foundRows += 1;
   }
   return { rows, mapping };
@@ -602,12 +691,24 @@ function inferSheet(sheet: ImportSheet, divisions: Division[], ignoredRows: Igno
     return { rows: [], mapping, ignored: { sheet: sheet.name, reason: mapping.reason! } };
   }
   const headerCandidate = findHeader(sheet);
+  const divisionHeader = findDivisionHeader(sheet);
+  const preambleHasDivisionMarker = headerCandidate
+    ? sheet.rows.slice(0, headerCandidate.index).some((row) => {
+      const cells = nonEmptyCells(row);
+      return cells.length === 1 && isDivisionSectionLabel(cells[0].value);
+    })
+    : false;
+  const participantOnlyHeader = Boolean(headerCandidate)
+    && [...headerCandidate!.roles.values()].includes('participant')
+    && headerCandidate!.roles.size > 1
+    && !divisionHeader
+    && !preambleHasDivisionMarker;
   const header = headerCandidate && (
     [...headerCandidate.roles.values()].includes('division')
     || [...headerCandidate.roles.values()].includes('team')
+    || participantOnlyHeader
     || isSheetDivisionCandidate(sheet.name, divisions)
   ) ? headerCandidate : null;
-  const divisionHeader = header ? null : findDivisionHeader(sheet);
   let result: { rows: CanonicalImportRow[]; mapping: SheetMapping };
   if (header) result = buildStandardRows(sheet, header, divisions, selected, ignoredRows);
   else if (divisionHeader) result = buildDivisionColumnRows(sheet, divisionHeader, selected, ignoredRows);
@@ -634,6 +735,62 @@ function preferredDivisionName(value: string): string {
   if (rating && key.endsWith(' women')) return `Women's ${rating}`;
   if (rating && key.endsWith(' mixed')) return `Mixed ${rating.includes('.') ? rating : `${rating}.0`}`;
   return clean;
+}
+
+function fallbackDivisionName(index: number, used: Set<string>): string {
+  let offset = index;
+  while (true) {
+    let suffix = '';
+    let value = offset;
+    do {
+      suffix = String.fromCharCode(65 + (value % 26)) + suffix;
+      value = Math.floor(value / 26) - 1;
+    } while (value >= 0);
+    const candidate = `Division ${suffix}`;
+    if (!used.has(normalizeImportLabel(candidate))) return candidate;
+    offset += 1;
+  }
+}
+
+function assignFallbackDivisions(rows: CanonicalImportRow[], divisions: Division[]): CanonicalImportRow[] {
+  const groups = new Map<string, CanonicalImportRow[]>();
+  for (const row of rows) {
+    if (!row.team || row.division) continue;
+    const key = row.fallbackGroup ?? row.source.sheet;
+    const group = groups.get(key) ?? [];
+    group.push(row);
+    groups.set(key, group);
+  }
+  const hasExplicitDivision = rows.some((row) => Boolean(row.division));
+  const used = new Set([
+    ...divisions.map((division) => normalizeImportLabel(division.name)),
+    ...rows.filter((row) => row.division).map((row) => normalizeImportLabel(row.division))
+  ]);
+  let fallbackIndex = 0;
+  const fallbackNames = new Map<string, string>();
+  for (const [key, group] of groups) {
+    // A singleton beside confidently labelled sections is more likely an accidental
+    // title or orphaned row. Keep it reviewable; otherwise positional grouping is a
+    // useful, honest default for organizer exports that omitted division names.
+    if (hasExplicitDivision && group.length < 2) continue;
+    const name = fallbackDivisionName(fallbackIndex, used);
+    fallbackIndex += 1;
+    used.add(normalizeImportLabel(name));
+    fallbackNames.set(key, name);
+  }
+  return rows.map((row) => {
+    if (!row.team || row.division) return row;
+    const name = fallbackNames.get(row.fallbackGroup ?? row.source.sheet);
+    if (!name) return row;
+    return {
+      ...row,
+      division: name,
+      confidence: row.confidence === 'low' ? 'medium' : row.confidence,
+      included: row.included || Boolean(row.team && row.source.sheet && !row.warnings.some((warning) => warning.includes('not selected'))),
+      reasons: [...row.reasons.filter((reason) => reason !== 'A division still needs to be selected.'), `No division label was available; grouped this row by its position and assigned ${name}.`],
+      warnings: row.warnings.filter((warning) => warning !== 'Choose a division before importing this row.')
+    };
+  });
 }
 
 function reconcileRows(rows: CanonicalImportRow[], divisions: Division[], teams: Team[]): { rows: CanonicalImportRow[]; newDivisions: string[] } {
@@ -691,7 +848,8 @@ function validateLimits(workbook: ImportWorkbook): string[] {
 export function reviewImportWorkbook(workbook: ImportWorkbook, divisions: Division[], teams: Team[]): ImportReview {
   const ignoredRows: IgnoredImportRow[] = [];
   const inferred = workbook.sheets.map((sheet) => inferSheet(sheet, divisions, ignoredRows));
-  const reconciled = reconcileRows(inferred.flatMap(({ rows }) => rows), divisions, teams);
+  const withFallbackDivisions = assignFallbackDivisions(inferred.flatMap(({ rows }) => rows), divisions);
+  const reconciled = reconcileRows(withFallbackDivisions, divisions, teams);
   const ignoredSheets = inferred.map(({ ignored }) => ignored).filter(Boolean) as { sheet: string; reason: string }[];
   const warnings: string[] = [];
   if (ignoredRows.length) warnings.push(`${ignoredRows.length} row(s) were ignored because they look like headers, notes, totals, or unrelated data.`);
@@ -712,7 +870,10 @@ export function reviewImportWorkbook(workbook: ImportWorkbook, divisions: Divisi
 
 export function parseCsvWorkbook(csv: string, sourceName = 'pasted.csv'): ImportWorkbook {
   const firstLine = csv.replace(/^\uFEFF/, '').split(/\r?\n/, 1)[0] ?? '';
-  const delimiter = !firstLine.includes(',') && firstLine.includes('\t') ? '\t' : ',';
+  const sample = firstLine.replace(/"[^"]*"/g, '');
+  const delimiter = ([',', '\t', ';', '|'] as const)
+    .map((candidate, index) => ({ candidate, count: [...sample].filter((character) => character === candidate).length, index }))
+    .sort((a, b) => b.count - a.count || a.index - b.index)[0].candidate;
   const records = parseCsvRecords(csv, delimiter);
   return { sourceName, sheets: [{ name: sourceName, rows: records.map(({ fields }) => fields), rowNumbers: records.map(({ line }) => line) }] };
 }
@@ -749,17 +910,52 @@ async function readSpreadsheetFile(file: File): Promise<ImportWorkbook> {
   return { sourceName: file.name, sheets };
 }
 
+async function readPdfFile(file: File): Promise<ImportWorkbook> {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const document = await pdfjs.getDocument({
+    data: new Uint8Array(await file.arrayBuffer()),
+    useWorkerFetch: false,
+    useSystemFonts: true,
+    isEvalSupported: false
+  }).promise;
+  const sheets: ImportSheet[] = [];
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+    const page = await document.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const lines: { y: number; items: { x: number; value: string }[] }[] = [];
+    for (const rawItem of content.items as Array<{ str?: unknown; transform?: unknown }>) {
+      const value = textValue(rawItem.str);
+      const transform = Array.isArray(rawItem.transform) ? rawItem.transform : [];
+      if (!value || transform.length < 6) continue;
+      const x = Number(transform[4]) || 0;
+      const y = Number(transform[5]) || 0;
+      let line = lines.find((candidate) => Math.abs(candidate.y - y) <= 2.5);
+      if (!line) {
+        line = { y, items: [] };
+        lines.push(line);
+      }
+      line.items.push({ x, value });
+    }
+    const rows = lines
+      .sort((a, b) => b.y - a.y)
+      .map((line) => line.items.sort((a, b) => a.x - b.x).map((item) => item.value));
+    if (rows.length) sheets.push({ name: `Page ${pageNumber}`, rows, rowNumbers: rows.map((_, index) => index + 1) });
+  }
+  return { sourceName: file.name, sheets };
+}
+
 export async function inspectImportFile(file: File, divisions: Division[], teams: Team[]): Promise<ImportReview> {
   if (file.size > IMPORT_LIMITS.fileBytes) {
     return { sourceName: file.name, rows: [], ignoredRows: [], mappings: [], newDivisions: [], ignoredSheets: [], warnings: [], errors: [`This file is larger than ${Math.round(IMPORT_LIMITS.fileBytes / 1024 / 1024)} MB. Choose a smaller workbook or paste only the registration rows.`] };
   }
   const lowerName = file.name.toLocaleLowerCase();
   if (lowerName.endsWith('.csv') || file.type === 'text/csv') return inspectImportText(await file.text(), divisions, teams, file.name);
-  if (!lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls')) {
-    return { sourceName: file.name, rows: [], ignoredRows: [], mappings: [], newDivisions: [], ignoredSheets: [], warnings: [], errors: ['Choose a CSV, XLSX, or XLS file.'] };
+  if (!lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls') && !lowerName.endsWith('.pdf')) {
+    return { sourceName: file.name, rows: [], ignoredRows: [], mappings: [], newDivisions: [], ignoredSheets: [], warnings: [], errors: ['Choose a CSV, XLSX, XLS, or PDF file.'] };
   }
   try {
-    return reviewImportWorkbook(await readSpreadsheetFile(file), divisions, teams);
+    const workbook = lowerName.endsWith('.pdf') ? await readPdfFile(file) : await readSpreadsheetFile(file);
+    return reviewImportWorkbook(workbook, divisions, teams);
   } catch (error) {
     return { sourceName: file.name, rows: [], ignoredRows: [], mappings: [], newDivisions: [], ignoredSheets: [], warnings: [], errors: [error instanceof Error ? `Could not read this workbook: ${error.message}` : 'Could not read this workbook.'] };
   }
