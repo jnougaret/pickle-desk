@@ -62,6 +62,9 @@
       h2 { margin: 0 0 0.35rem; font-size: 1.25rem; }
       .download-card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
       .download-link { font-weight: 600; }
+      .download-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 0.65rem; }
+      .download-link.secondary-link { font-size: 0.9rem; font-weight: 500; }
+      .download-note { margin-top: 0.85rem !important; font-size: 0.85rem !important; }
       .details { border-top: 1px solid var(--line); padding-top: 1.5rem; color: var(--muted); }
       .details h2 { color: var(--text); }
       .details li + li { margin-top: 0.5rem; }
@@ -117,9 +120,13 @@
         <article class="download-card">
           <div>
             <h2>Windows</h2>
-            <p>Windows installer for current supported versions.</p>
+            <p>Recommended: install the signed Microsoft Store version for the simplest setup.</p>
+            <p class="download-note">Need a standalone installer or no Store access? The bundled EXE is available as a secondary option.</p>
           </div>
-          <a class="download-link" href="https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe">Download for Windows ↗</a>
+          <div class="download-actions">
+            <a class="download-link" href="https://apps.microsoft.com/detail/9P8ST763N7F3">Install from Microsoft Store ↗</a>
+            <a class="download-link secondary-link" href="https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe">Download bundled installer (EXE) ↗</a>
+          </div>
         </article>
         <article class="download-card">
           <div>
@@ -171,8 +178,10 @@
             <h3>Windows</h3>
             <h4>Chrome Web app</h4>
             <p>Open Pickle Desk in Chrome. Choose <strong>⋮ → Cast, save, and share → Install page as app</strong> (or use the install icon in the address bar), then open it once from the desktop or Start menu.</p>
-            <h4>Native desktop app</h4>
-            <p>For the EXE above, run the installer. If SmartScreen says <strong>Windows protected your PC</strong>, choose <strong>More info → Run anyway</strong>. The Microsoft Store link avoids the unsigned-installer warning. Only approve the official download.</p>
+            <h4>Microsoft Store app</h4>
+            <p><strong>Recommended for most Windows users.</strong> Use <a href="https://apps.microsoft.com/detail/9P8ST763N7F3">the Microsoft Store listing</a> above and choose <strong>Get</strong> or <strong>Install</strong>. Microsoft handles the signed package and Store updates.</p>
+            <h4>Bundled installer</h4>
+            <p>Use the secondary EXE link above when Microsoft Store access is unavailable or you need a standalone installer for an offline or managed setup. It includes WebView2, but the unsigned installer may show <strong>Windows protected your PC</strong>; choose <strong>More info → Run anyway</strong> only for the official download.</p>
           </article>
         </div>
       </section>
