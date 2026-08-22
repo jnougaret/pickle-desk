@@ -672,3 +672,12 @@ nav button.active { color: #163d3a; background: #d5eee1; font-weight: 700; }
 .bracket-result .button { font-size: 14px; }
 .single-round-column .bracket-result .button { font-size: 14px; }
 .playoff-card > .bracket-team:first-child { border-top: 0; }
+
+.empty-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.empty-table p { margin: 0; }

@@ -637,9 +637,127 @@
         <section class="content-section overview-view"><div class="welcome-card"><div><h2>{tournament.name}</h2><p>{tournament.location || 'Set a location in the Divisions area'} · {displayDate(tournament.date)}</p></div></div><div class="stat-grid"><div class="stat-card"><span class="stat-label">DIVISIONS</span><strong>{tournament.divisions.length}</strong></div><div class="stat-card"><span class="stat-label">REGISTERED TEAMS</span><strong>{tournament.teams.length}</strong></div><div class="stat-card"><span class="stat-label">POOL MATCHES</span><strong>{tournament.matches.length}</strong></div><div class="stat-card"><span class="stat-label">COURTS</span><strong>{tournament.courtCount}</strong></div></div><div class="overview-grid"><div class="panel"><div class="panel-heading"><div><div class="eyebrow">WORKFLOW</div><h3>Build your tournament</h3></div></div><div class="workflow-list">{#each [{label:'Set up divisions',view:'divisions',done:tournament.divisions.length > 0},{label:'Register teams',view:'teams',done:tournament.teams.length > 0},{label:'Generate pools & matches',view:'pools',done:tournament.matches.length > 0},{label:'Create the schedule',view:'schedule',done:tournament.matches.some((match) => match.scheduledStartTime)},{label:'Enter results & standings',view:'results',done:tournament.matches.some((match) => match.status === 'completed')},{label:'Build playoffs',view:'playoffs',done:tournament.playoffMatches.length > 0}] as step, i}<button class="workflow-row" on:click={() => navigate(step.view as View)}><span class:done={step.done} class="workflow-check">{step.done ? '✓' : i + 1}</span><span>{step.label}</span></button>{/each}</div></div></div></section>
       {:else if view === 'divisions'}
         <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
-        <section class="content-section divisions-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={openImport}>↥ Import teams</button><div class="inline-add"><input placeholder="New division name" bind:value={newDivisionName} on:keydown={(event) => event.key === 'Enter' && addDivision()} /><button class="button button-primary" on:click={addDivision}>+ Add division</button></div></div></div>{#if tournament.divisions.length}<div class="division-list">{#each tournament.divisions as division}<article class:current={currentDivision?.id === division.id} class="division-card" role="button" tabindex="0" on:click={() => setWorkingDivision(division.id)} on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && setWorkingDivision(division.id)}><div class="division-card-top"><div class="division-name"><span class="division-dot"></span>{#if editingDivisionId === division.id}<input class="edit-input" bind:value={editingDivisionName} on:keydown={(event) => event.key === 'Enter' && saveDivisionName()} />{:else}<h3>{division.name}</h3>{/if}<span>{tournament.teams.filter((team) => team.divisionId === division.id).length} teams · {tournament.pools.filter((pool) => pool.divisionId === division.id).length || 0} pools</span></div><div class="card-actions">{#if editingDivisionId === division.id}<button class="text-button" on:click={saveDivisionName}>Save</button>{:else}<button class="text-button" on:click={() => { editingDivisionId = division.id; editingDivisionName = division.name; }}>Rename</button>{/if}<button class="text-button danger" on:click={() => deleteDivision(division)}>Delete</button><button class="button button-secondary small-button" on:click={() => { navigate('teams'); setWorkingDivision(division.id); }}>Open division →</button></div></div>{#if currentDivision?.id === division.id}<div class="settings-grid"><label>Start time<input type="datetime-local" value={inputDateTime(division.startTime)} on:change={(event) => updateDivision('startTime', (event.target as HTMLInputElement).value)} /></label><label>Warm-up minutes<input type="number" min="0" value={division.warmupMinutes} on:change={(event) => updateDivision('warmupMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Game minutes<input type="number" min="1" value={division.gameMinutes} on:change={(event) => updateDivision('gameMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Minimum rest minutes<input type="number" min="0" value={division.minimumRestMinutes} on:change={(event) => updateDivision('minimumRestMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Number of pools<input type="number" min="1" max={Math.max(1, divisionTeams.length)} value={division.poolCount} on:change={(event) => updateDivision('poolCount', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label><label>Pool-play rounds<input type="number" min="1" value={division.poolRoundCount} on:change={(event) => updateDivision('poolRoundCount', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label><label>Playoff qualifiers per pool<input type="number" min="1" value={division.playoffQualifiersPerPool} on:change={(event) => updateDivision('playoffQualifiersPerPool', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label></div>{/if}</article>{/each}</div>{:else}<div class="empty-panel"><div class="empty-icon">◫</div><h3>Start with a division</h3><p>Try “Mixed 3.5” or “Men’s 4.0”.</p></div>{/if}</section>
+        <section class="content-section divisions-view">
+          <div class="section-intro section-intro-actions">
+            <div class="toolbar">
+              <div class="inline-add">
+                <input placeholder="New division name" bind:value={newDivisionName} on:keydown={(event) => event.key === 'Enter' && addDivision()} />
+                <button class="button button-primary" on:click={addDivision}>+ Add division</button>
+              </div>
+              {#if tournament.divisions.length}
+                <button class="button button-primary" on:click={openImport}>↥ Import teams</button>
+              {/if}
+            </div>
+          </div>
+          {#if tournament.divisions.length}
+            <div class="division-list">
+              {#each tournament.divisions as division}
+                <article class:current={currentDivision?.id === division.id} class="division-card" role="button" tabindex="0" on:click={() => setWorkingDivision(division.id)} on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && setWorkingDivision(division.id)}>
+                  <div class="division-card-top">
+                    <div class="division-name">
+                      <span class="division-dot"></span>
+                      {#if editingDivisionId === division.id}
+                        <input class="edit-input" bind:value={editingDivisionName} on:keydown={(event) => event.key === 'Enter' && saveDivisionName()} />
+                      {:else}
+                        <h3>{division.name}</h3>
+                      {/if}
+                      <span>{tournament.teams.filter((team) => team.divisionId === division.id).length} teams · {tournament.pools.filter((pool) => pool.divisionId === division.id).length || 0} pools</span>
+                    </div>
+                    <div class="card-actions">
+                      {#if editingDivisionId === division.id}
+                        <button class="text-button" on:click={saveDivisionName}>Save</button>
+                      {:else}
+                        <button class="text-button" on:click={() => { editingDivisionId = division.id; editingDivisionName = division.name; }}>Rename</button>
+                      {/if}
+                      <button class="text-button danger" on:click={() => deleteDivision(division)}>Delete</button>
+                      <button class="button button-secondary small-button" on:click={() => { navigate('teams'); setWorkingDivision(division.id); }}>Open division →</button>
+                    </div>
+                  </div>
+                  {#if currentDivision?.id === division.id}
+                    <div class="settings-grid">
+                      <label>Start time<input type="datetime-local" value={inputDateTime(division.startTime)} on:change={(event) => updateDivision('startTime', (event.target as HTMLInputElement).value)} /></label>
+                      <label>Warm-up minutes<input type="number" min="0" value={division.warmupMinutes} on:change={(event) => updateDivision('warmupMinutes', Number((event.target as HTMLInputElement).value))} /></label>
+                      <label>Game minutes<input type="number" min="1" value={division.gameMinutes} on:change={(event) => updateDivision('gameMinutes', Number((event.target as HTMLInputElement).value))} /></label>
+                      <label>Minimum rest minutes<input type="number" min="0" value={division.minimumRestMinutes} on:change={(event) => updateDivision('minimumRestMinutes', Number((event.target as HTMLInputElement).value))} /></label>
+                      <label>Number of pools<input type="number" min="1" max={Math.max(1, divisionTeams.length)} value={division.poolCount} on:change={(event) => updateDivision('poolCount', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label>
+                      <label>Pool-play rounds<input type="number" min="1" value={division.poolRoundCount} on:change={(event) => updateDivision('poolRoundCount', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label>
+                      <label>Playoff qualifiers per pool<input type="number" min="1" value={division.playoffQualifiersPerPool} on:change={(event) => updateDivision('playoffQualifiersPerPool', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label>
+                    </div>
+                  {/if}
+                </article>
+              {/each}
+            </div>
+          {:else}
+            <div class="empty-panel division-empty-panel">
+              <div class="empty-icon">◫</div>
+              <h3>Divisions</h3>
+              <p>Import your teams from a file</p>
+              <button class="button button-primary" on:click={openImport}>↥ Import teams</button>
+            </div>
+          {/if}
+        </section>
       {:else if view === 'teams'}
-        <section class="content-section teams-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={openImport}>↥ Import teams</button>{#if !allDivisionSelected}<div class="inline-add"><input placeholder="Team name" bind:value={newTeamName} on:keydown={(event) => event.key === 'Enter' && addTeam()} /><button class="button button-primary" on:click={addTeam}>+ Add team</button></div>{/if}</div></div>{#if allDivisionSelected}<div class="table-panel"><div class="table-toolbar"><div><h3>All divisions</h3><span class="muted">{tournament.teams.length} {tournament.teams.length === 1 ? 'team' : 'teams'} registered</span></div></div>{#if tournament.teams.length}<div class="team-list">{#each tournament.divisions as division}<div class="team-division"><h4 class="team-division-heading">{division.name}</h4>{@render TeamRows(division)}</div>{/each}</div>{:else}<div class="empty-table"><p>No teams registered yet.</p></div>{/if}</div>{:else if currentDivision}<div class="table-panel"><div class="table-toolbar"><div><h3>{currentDivision.name}</h3><span class="muted">{divisionTeams.length} {divisionTeams.length === 1 ? 'team' : 'teams'} registered</span></div></div>{#if divisionTeams.length}<div class="team-list">{@render TeamRows(currentDivision)}</div>{:else}<div class="empty-table"><p>No teams in this division yet.</p><button class="button button-secondary" on:click={() => document.querySelector<HTMLInputElement>('.inline-add input')?.focus()}>Add the first team</button></div>{/if}</div>{:else}<div class="empty-panel"><div class="empty-icon">◫</div><h3>Add a division first</h3><button class="button button-secondary" on:click={() => navigate('divisions')}>Go to divisions</button></div>{/if}</section>
+        <section class="content-section teams-view">
+          <div class="section-intro section-intro-actions">
+            <div class="toolbar">
+              {#if !allDivisionSelected}
+                <div class="inline-add">
+                  <input placeholder="New team name" bind:value={newTeamName} on:keydown={(event) => event.key === 'Enter' && addTeam()} />
+                  <button class="button button-primary" on:click={addTeam}>+ Add team</button>
+                  {#if tournament.teams.length}
+                    <button class="button button-primary" on:click={openImport}>↥ Import teams</button>
+                  {/if}
+                </div>
+              {:else if tournament.teams.length}
+                <button class="button button-primary" on:click={openImport}>↥ Import teams</button>
+              {/if}
+            </div>
+          </div>
+          {#if allDivisionSelected}
+            <div class="table-panel">
+              <div class="table-toolbar">
+                <div>
+                  <h3>All divisions</h3>
+                  <span class="muted">{tournament.teams.length} {tournament.teams.length === 1 ? 'team' : 'teams'} registered</span>
+                </div>
+              </div>
+              {#if tournament.teams.length}
+                <div class="team-list">
+                  {#each tournament.divisions as division}
+                    <div class="team-division"><h4 class="team-division-heading">{division.name}</h4>{@render TeamRows(division)}</div>
+                  {/each}
+                </div>
+              {:else}
+                <div class="empty-table">
+                  <p>No teams registered yet.</p>
+                  <button class="button button-primary" on:click={openImport}>↥ Import teams</button>
+                </div>
+              {/if}
+            </div>
+          {:else if currentDivision}
+            <div class="table-panel">
+              <div class="table-toolbar">
+                <div>
+                  <h3>{currentDivision.name}</h3>
+                  <span class="muted">{divisionTeams.length} {divisionTeams.length === 1 ? 'team' : 'teams'} registered</span>
+                </div>
+              </div>
+              {#if divisionTeams.length}
+                <div class="team-list">{@render TeamRows(currentDivision)}</div>
+              {:else}
+                <div class="empty-table">
+                  <p>No teams in this division yet.</p>
+                  <button class="button button-secondary" on:click={() => document.querySelector<HTMLInputElement>('.inline-add input')?.focus()}>Add the first team</button>
+                  {#if !tournament.teams.length}
+                    <button class="button button-primary" on:click={openImport}>↥ Import teams</button>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          {:else}
+            <div class="empty-panel"><div class="empty-icon">◫</div><h3>Add a division first</h3><button class="button button-secondary" on:click={() => navigate('divisions')}>Go to divisions</button></div>
+          {/if}
+        </section>
       {:else if view === 'pools'}
         <section class="content-section pools-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={regeneratePools}>⤨ {allDivisionSelected ? (poolViewPools.length ? 'Re-randomize all' : 'Generate all pools') : (poolViewPools.length ? 'Re-randomize' : 'Generate pools')}</button><button class="button button-primary" disabled={!poolViewPools.length || (allDivisionSelected && poolViewDivisions.some((division) => poolsForDivision(division.id).length === 0))} on:click={generateMatches}>{allDivisionSelected ? 'Generate all matches →' : 'Generate matches →'}</button></div></div>{#if currentDivision}{#if poolViewPools.length}{#if allDivisionSelected}<div class="pool-division-list">{#each poolViewDivisions as division}{#if poolsForDivision(division.id).length}<section class="pool-division"><div class="pool-division-heading"><h3>{division.name}</h3><span>{tournament.teams.filter((team) => team.divisionId === division.id).length} teams</span></div>{@render PoolGrid(poolsForDivision(division.id))}</section>{/if}{/each}</div>{:else}{@render PoolGrid(poolViewPools)}{/if}{:else}<div class="empty-panel pool-empty-panel"><div class="empty-icon">◈</div><h3>Ready to build pools</h3><button class="button button-primary" on:click={regeneratePools}>{allDivisionSelected ? 'Generate all pools' : 'Generate pools'}</button></div>{/if}{:else}<div class="empty-panel"><div class="empty-icon">◈</div><h3>Add a division first</h3><button class="button button-secondary" on:click={() => navigate('divisions')}>Go to divisions</button></div>{/if}</section>
       {:else if view === 'schedule'}
