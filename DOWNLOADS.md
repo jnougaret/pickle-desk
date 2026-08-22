@@ -3,12 +3,11 @@
 Choose the version that matches the device you will use during the tournament:
 
 - [Open the Web app](https://pickledesk.joshuanougaret.com/)
-- [Install the Windows desktop app from Microsoft Store](https://apps.microsoft.com/detail/9P8ST763N7F3)
-- [Download the bundled Windows installer (EXE)](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe)
+- [Microsoft Store download](https://apps.microsoft.com/detail/9P8ST763N7F3)
 - [Download the macOS desktop app](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-macOS-universal.dmg)
 - [View the latest release notes and checksums](https://github.com/jnougaret/pickle-desk/releases/latest)
 
-This is the canonical public distribution page for Pickle Desk. The Web app is delivered by Cloudflare Pages at the custom domain; desktop installers are delivered through GitHub Releases and the Microsoft Store. The Microsoft Store version is the recommended Windows option because Microsoft handles its signed installation and Store updates. Keep the bundled EXE as a secondary option for environments without Store access or for standalone offline/managed installs; it includes WebView2 but may require a one-time SmartScreen confirmation.
+This is the canonical public distribution page for Pickle Desk. The Web app is delivered by Cloudflare Pages at the custom domain; desktop installers are delivered through GitHub Releases and the Microsoft Store. The Microsoft Store version is the recommended Windows option; the bundled installer is documented in the Windows offline-install instructions below.
 
 ## Install for offline use
 
@@ -38,6 +37,6 @@ While online, open the [Pickle Desk Web app](https://pickledesk.joshuanougaret.c
 
 - **Chrome Web app:** Open Pickle Desk in Chrome. Choose **⋮ → Cast, save, and share → Install page as app** (or use the install icon in the address bar), then open it once from the desktop or Start menu.
 - **Microsoft Store app:** Recommended for most Windows users. Use the [Microsoft Store listing](https://apps.microsoft.com/detail/9P8ST763N7F3) above and choose **Get** or **Install**. Microsoft handles the signed package and Store updates.
-- **Bundled installer:** Use the secondary [EXE download](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe) when Microsoft Store access is unavailable or you need a standalone installer for an offline or managed setup. It includes WebView2, but the unsigned installer may show **Windows protected your PC**; choose **More info → Run anyway** only for the official download.
+- **Bundled installer:** Need a standalone installer or no Store access? The bundled EXE is available as a secondary option. [Download bundled installer (EXE)](https://github.com/jnougaret/pickle-desk/releases/latest/download/Pickle-Desk-windows-setup.exe). It includes WebView2, but the unsigned installer may show **Windows protected your PC**; choose **More info → Run anyway** only for the official download.
 
-The Web app is not a release binary, so it does not appear as a downloadable asset in the GitHub Release. The latest release page links to it for discoverability; this page is the canonical installation guide. The Windows installer includes WebView2, and the macOS download is a universal build for Apple silicon and Intel Macs. Both desktop apps run locally without Node, Rust, or an internet connection after installation.
+The Web app is not a release binary, so it does not appear as a downloadable asset in the GitHub Release. The latest release page links to it for discoverability; this page is the canonical installation guide. The macOS download is a universal build for Apple silicon and Intel Macs. Both desktop apps run locally without Node, Rust, or an internet connection after installation.
