@@ -67,6 +67,9 @@ const urls = JSON.parse(match[1]);
 if (!urls.includes(`${basePath}index.html`) || !urls.includes(`${basePath}manifest.webmanifest`)) {
   throw new Error('Service worker must precache the app shell and manifest.');
 }
+if (!urls.some((url) => /\/assets\/importPipeline-[^/]+\.js$/.test(url)) || !urls.some((url) => /\/assets\/xlsx-[^/]+\.js$/.test(url))) {
+  throw new Error('Service worker must precache the offline team importer and workbook reader chunks.');
+}
 if (urls.some((url) => url.endsWith('/_headers') || url.endsWith('/_redirects'))) {
   throw new Error('Cloudflare Pages control files must not be precached.');
 }

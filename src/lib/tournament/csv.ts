@@ -8,18 +8,18 @@ export interface ImportPreview {
   newDivisions: string[];
 }
 
-interface CsvRecord {
+export interface CsvRecord {
   fields: string[];
   line: number;
 }
 
-class CsvParseError extends Error {
+export class CsvParseError extends Error {
   constructor(public readonly line: number, message: string) {
     super(message);
   }
 }
 
-function parseCsvRecords(csv: string): CsvRecord[] {
+export function parseCsvRecords(csv: string, delimiter = ','): CsvRecord[] {
   const records: CsvRecord[] = [];
   const text = csv.replace(/^\uFEFF/, '');
   let fields: string[] = [];
@@ -76,7 +76,7 @@ function parseCsvRecords(csv: string): CsvRecord[] {
         index += 1;
         continue;
       }
-      if (character === ',') {
+      if (character === delimiter) {
         fields.push(field.trim());
         field = '';
         afterQuote = false;
@@ -101,7 +101,7 @@ function parseCsvRecords(csv: string): CsvRecord[] {
       index += 1;
       continue;
     }
-    if (character === ',') {
+    if (character === delimiter) {
       fields.push(field.trim());
       field = '';
       recordTouched = true;

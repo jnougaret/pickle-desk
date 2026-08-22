@@ -7,10 +7,10 @@
   import { calculateStandings, type PoolStandings, type StandingRow } from './lib/tournament/standings';
   import { generateSchedule } from './lib/tournament/scheduler';
   import { advancePlayoffResult, applyByes, generatePlayoffBracket } from './lib/tournament/playoffs';
-  import { commitCsv, previewCsv, type ImportPreview } from './lib/tournament/csv';
   import { DEFAULT_DIVISION_SETTINGS, localDateInputValue, startTimeForEventDate } from './lib/tournament/defaults';
   import { createTournamentRepository, exportTournament, readTournamentFile } from './lib/tournament/store';
   import type { Division, Match, PlayoffMatch, Pool, Team, Tournament } from './lib/tournament/types';
+  import type { CanonicalImportRow, ImportReview, SheetMapping } from './lib/tournament/importPipeline';
 
   const repository = createTournamentRepository();
 
@@ -38,7 +38,10 @@
   let importOpen = false;
   let deleteArmed = false;
   let importText = 'division,team\nMixed 3.5,Smith / Jones\nMixed 3.5,Davis / Chen\nMen\'s 4.0,Brown / Lee';
-  let importPreview: ImportPreview | null = null;
+  let importReview: ImportReview | null = null;
+  let importFileName = '';
+  let importBusy = false;
+  let importError = '';
   let newTeamName = '';
   let editingTeamId = '';
   let editingTeamName = '';
@@ -90,6 +93,13 @@
   $: sheetMatches = tournament && currentDivision
     ? workingMatches.filter((match) => match.scheduledStartTime && (sheetRound === 'all' || String(match.roundNumber) === sheetRound)).sort(sortMatches)
     : [];
+  $: importReadyCount = importReview?.rows.filter((row) => row.included && row.division.trim() && row.team.trim()).length ?? 0;
+  $: importWarningCount = importReview?.rows.filter((row) => row.warnings.length > 0).length ?? 0;
+  $: importDuplicateCount = importReview?.rows.filter((row) => row.duplicate).length ?? 0;
+  $: importUnresolvedCount = importReview?.rows.filter((row) => row.included && (!row.division.trim() || !row.team.trim())).length ?? 0;
+  $: importIgnoredCount = (importReview?.ignoredRows.length ?? 0) + (importReview?.rows.filter((row) => !row.included).length ?? 0);
+  $: importNewDivisionCount = importReview && tournament ? new Set(importReview.rows.filter((row) => row.included && row.division.trim()).map((row) => importDivisionKey(row.division)).filter((key) => !tournament!.divisions.some((division) => importDivisionKey(division.name) === key))).size : 0;
+  $: importCanCommit = Boolean(importReview && !importBusy && !importReview.errors.length && importReadyCount > 0 && importUnresolvedCount === 0);
 
   onMount(() => { void refreshTournaments(); });
 
@@ -479,18 +489,99 @@
     };
   }
 
-  function handleImportFile(event: Event): void {
-    const input = event.target as HTMLInputElement; const file = input.files?.[0]; if (!file) return;
-    file.text().then((text) => { importText = text; importPreview = previewCsv(text, tournament?.divisions ?? []); }); input.value = '';
+  function importDivisionKey(value: string): string {
+    return value.trim().toLocaleLowerCase().replace(/[’‘`´']/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(/\s+/).filter(Boolean).sort().join(' ');
   }
 
-  function previewImport(): void { importPreview = previewCsv(importText, tournament?.divisions ?? []); }
+  function openImport(): void {
+    importOpen = true;
+    importReview = null;
+    importFileName = '';
+    importBusy = false;
+    importError = '';
+    importText = 'division,team\nMixed 3.5,Smith / Jones\nMixed 3.5,Davis / Chen\nMen\'s 4.0,Brown / Lee';
+  }
+
+  function closeImport(): void {
+    importOpen = false;
+    importReview = null;
+    importBusy = false;
+    importError = '';
+  }
+
+  async function handleImportFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || !tournament) return;
+    importBusy = true;
+    importError = '';
+    importReview = null;
+    importFileName = file.name;
+    try {
+      const importer = await import('./lib/tournament/importPipeline');
+      importReview = await importer.inspectImportFile(file, tournament.divisions, tournament.teams);
+      if (file.name.toLocaleLowerCase().endsWith('.csv') || file.type === 'text/csv') importText = await file.text();
+      else importText = '';
+    } catch (error) {
+      importError = error instanceof Error ? error.message : 'Could not inspect this file.';
+    } finally {
+      importBusy = false;
+      input.value = '';
+    }
+  }
+
+  async function previewImport(): Promise<void> {
+    if (!tournament || !importText.trim()) return;
+    importBusy = true;
+    importError = '';
+    try {
+      const importer = await import('./lib/tournament/importPipeline');
+      importReview = importer.inspectImportText(importText, tournament.divisions, tournament.teams, 'pasted.csv');
+      importFileName = 'pasted.csv';
+    } catch (error) {
+      importError = error instanceof Error ? error.message : 'Could not inspect the pasted data.';
+    } finally {
+      importBusy = false;
+    }
+  }
+
+  function updateImportRow(rowId: string, field: 'division' | 'team', value: string): void {
+    if (!importReview) return;
+    importReview = { ...importReview, rows: importReview.rows.map((row) => row.id === rowId ? { ...row, [field]: value } : row) };
+  }
+
+  function toggleImportRow(row: CanonicalImportRow): void {
+    if (!importReview) return;
+    importReview = { ...importReview, rows: importReview.rows.map((item) => item.id === row.id ? { ...item, included: !item.included } : item) };
+  }
+
+  function toggleImportSheet(mapping: SheetMapping): void {
+    if (!importReview) return;
+    const selected = !mapping.selected;
+    importReview = {
+      ...importReview,
+      mappings: importReview.mappings.map((item) => item.sheet === mapping.sheet ? { ...item, selected } : item),
+      rows: importReview.rows.map((row) => row.source.sheet === mapping.sheet ? { ...row, included: selected && Boolean(row.division.trim() && row.team.trim() && row.confidence !== 'low') } : row),
+      ignoredSheets: selected ? importReview.ignoredSheets.filter((item) => item.sheet !== mapping.sheet) : [...importReview.ignoredSheets.filter((item) => item.sheet !== mapping.sheet), { sheet: mapping.sheet, reason: 'Unchecked during review.' }]
+    };
+  }
 
   function commitImport(): void {
-    if (!tournament || !importPreview || importPreview.errors.length) return;
-    const importedCount = importPreview.rows.length;
-    const result = commitCsv(importPreview, tournament.divisions, tournament.teams, tournament.id, tournament.date);
-    tournament = { ...tournament, divisions: result.divisions, teams: result.teams }; touch(); importOpen = false; importPreview = null; notify(`${importedCount} teams imported.`);
+    if (!tournament || !importReview || !importCanCommit) return;
+    try {
+      const importerPromise = import('./lib/tournament/importPipeline');
+      void importerPromise.then((importer) => {
+        if (!tournament || !importReview) return;
+        const before = tournament.teams.length;
+        const result = importer.commitImportReview(importReview, tournament.divisions, tournament.teams, tournament.id, tournament.date);
+        tournament = { ...tournament, divisions: result.divisions, teams: result.teams };
+        touch();
+        closeImport();
+        notify(`${result.teams.length - before} teams imported.`);
+      }).catch((error) => notify(error instanceof Error ? error.message : 'Could not import these teams.'));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not import these teams.');
+    }
   }
 
   function sortMatches(a: Match, b: Match): number { return (a.scheduledStartTime ?? '').localeCompare(b.scheduledStartTime ?? '') || (a.courtNumber ?? 0) - (b.courtNumber ?? 0); }
@@ -546,9 +637,9 @@
         <section class="content-section overview-view"><div class="welcome-card"><div><h2>{tournament.name}</h2><p>{tournament.location || 'Set a location in the Divisions area'} · {displayDate(tournament.date)}</p></div></div><div class="stat-grid"><div class="stat-card"><span class="stat-label">DIVISIONS</span><strong>{tournament.divisions.length}</strong></div><div class="stat-card"><span class="stat-label">REGISTERED TEAMS</span><strong>{tournament.teams.length}</strong></div><div class="stat-card"><span class="stat-label">POOL MATCHES</span><strong>{tournament.matches.length}</strong></div><div class="stat-card"><span class="stat-label">COURTS</span><strong>{tournament.courtCount}</strong></div></div><div class="overview-grid"><div class="panel"><div class="panel-heading"><div><div class="eyebrow">WORKFLOW</div><h3>Build your tournament</h3></div></div><div class="workflow-list">{#each [{label:'Set up divisions',view:'divisions',done:tournament.divisions.length > 0},{label:'Register teams',view:'teams',done:tournament.teams.length > 0},{label:'Generate pools & matches',view:'pools',done:tournament.matches.length > 0},{label:'Create the schedule',view:'schedule',done:tournament.matches.some((match) => match.scheduledStartTime)},{label:'Enter results & standings',view:'results',done:tournament.matches.some((match) => match.status === 'completed')},{label:'Build playoffs',view:'playoffs',done:tournament.playoffMatches.length > 0}] as step, i}<button class="workflow-row" on:click={() => navigate(step.view as View)}><span class:done={step.done} class="workflow-check">{step.done ? '✓' : i + 1}</span><span>{step.label}</span></button>{/each}</div></div></div></section>
       {:else if view === 'divisions'}
         <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
-        <section class="content-section divisions-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={() => importOpen = true}>↥ Import CSV</button><div class="inline-add"><input placeholder="New division name" bind:value={newDivisionName} on:keydown={(event) => event.key === 'Enter' && addDivision()} /><button class="button button-primary" on:click={addDivision}>+ Add division</button></div></div></div>{#if tournament.divisions.length}<div class="division-list">{#each tournament.divisions as division}<article class:current={currentDivision?.id === division.id} class="division-card" role="button" tabindex="0" on:click={() => setWorkingDivision(division.id)} on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && setWorkingDivision(division.id)}><div class="division-card-top"><div class="division-name"><span class="division-dot"></span>{#if editingDivisionId === division.id}<input class="edit-input" bind:value={editingDivisionName} on:keydown={(event) => event.key === 'Enter' && saveDivisionName()} />{:else}<h3>{division.name}</h3>{/if}<span>{tournament.teams.filter((team) => team.divisionId === division.id).length} teams · {tournament.pools.filter((pool) => pool.divisionId === division.id).length || 0} pools</span></div><div class="card-actions">{#if editingDivisionId === division.id}<button class="text-button" on:click={saveDivisionName}>Save</button>{:else}<button class="text-button" on:click={() => { editingDivisionId = division.id; editingDivisionName = division.name; }}>Rename</button>{/if}<button class="text-button danger" on:click={() => deleteDivision(division)}>Delete</button><button class="button button-secondary small-button" on:click={() => { navigate('teams'); setWorkingDivision(division.id); }}>Open division →</button></div></div>{#if currentDivision?.id === division.id}<div class="settings-grid"><label>Start time<input type="datetime-local" value={inputDateTime(division.startTime)} on:change={(event) => updateDivision('startTime', (event.target as HTMLInputElement).value)} /></label><label>Warm-up minutes<input type="number" min="0" value={division.warmupMinutes} on:change={(event) => updateDivision('warmupMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Game minutes<input type="number" min="1" value={division.gameMinutes} on:change={(event) => updateDivision('gameMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Minimum rest minutes<input type="number" min="0" value={division.minimumRestMinutes} on:change={(event) => updateDivision('minimumRestMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Number of pools<input type="number" min="1" max={Math.max(1, divisionTeams.length)} value={division.poolCount} on:change={(event) => updateDivision('poolCount', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label><label>Pool-play rounds<input type="number" min="1" value={division.poolRoundCount} on:change={(event) => updateDivision('poolRoundCount', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label><label>Playoff qualifiers per pool<input type="number" min="1" value={division.playoffQualifiersPerPool} on:change={(event) => updateDivision('playoffQualifiersPerPool', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label></div>{/if}</article>{/each}</div>{:else}<div class="empty-panel"><div class="empty-icon">◫</div><h3>Start with a division</h3><p>Try “Mixed 3.5” or “Men’s 4.0”.</p></div>{/if}</section>
+        <section class="content-section divisions-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={openImport}>↥ Import teams</button><div class="inline-add"><input placeholder="New division name" bind:value={newDivisionName} on:keydown={(event) => event.key === 'Enter' && addDivision()} /><button class="button button-primary" on:click={addDivision}>+ Add division</button></div></div></div>{#if tournament.divisions.length}<div class="division-list">{#each tournament.divisions as division}<article class:current={currentDivision?.id === division.id} class="division-card" role="button" tabindex="0" on:click={() => setWorkingDivision(division.id)} on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && setWorkingDivision(division.id)}><div class="division-card-top"><div class="division-name"><span class="division-dot"></span>{#if editingDivisionId === division.id}<input class="edit-input" bind:value={editingDivisionName} on:keydown={(event) => event.key === 'Enter' && saveDivisionName()} />{:else}<h3>{division.name}</h3>{/if}<span>{tournament.teams.filter((team) => team.divisionId === division.id).length} teams · {tournament.pools.filter((pool) => pool.divisionId === division.id).length || 0} pools</span></div><div class="card-actions">{#if editingDivisionId === division.id}<button class="text-button" on:click={saveDivisionName}>Save</button>{:else}<button class="text-button" on:click={() => { editingDivisionId = division.id; editingDivisionName = division.name; }}>Rename</button>{/if}<button class="text-button danger" on:click={() => deleteDivision(division)}>Delete</button><button class="button button-secondary small-button" on:click={() => { navigate('teams'); setWorkingDivision(division.id); }}>Open division →</button></div></div>{#if currentDivision?.id === division.id}<div class="settings-grid"><label>Start time<input type="datetime-local" value={inputDateTime(division.startTime)} on:change={(event) => updateDivision('startTime', (event.target as HTMLInputElement).value)} /></label><label>Warm-up minutes<input type="number" min="0" value={division.warmupMinutes} on:change={(event) => updateDivision('warmupMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Game minutes<input type="number" min="1" value={division.gameMinutes} on:change={(event) => updateDivision('gameMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Minimum rest minutes<input type="number" min="0" value={division.minimumRestMinutes} on:change={(event) => updateDivision('minimumRestMinutes', Number((event.target as HTMLInputElement).value))} /></label><label>Number of pools<input type="number" min="1" max={Math.max(1, divisionTeams.length)} value={division.poolCount} on:change={(event) => updateDivision('poolCount', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label><label>Pool-play rounds<input type="number" min="1" value={division.poolRoundCount} on:change={(event) => updateDivision('poolRoundCount', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label><label>Playoff qualifiers per pool<input type="number" min="1" value={division.playoffQualifiersPerPool} on:change={(event) => updateDivision('playoffQualifiersPerPool', Math.max(1, Number((event.target as HTMLInputElement).value)))} /></label></div>{/if}</article>{/each}</div>{:else}<div class="empty-panel"><div class="empty-icon">◫</div><h3>Start with a division</h3><p>Try “Mixed 3.5” or “Men’s 4.0”.</p></div>{/if}</section>
       {:else if view === 'teams'}
-        <section class="content-section teams-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={() => importOpen = true}>↥ Import CSV</button>{#if !allDivisionSelected}<div class="inline-add"><input placeholder="Team name" bind:value={newTeamName} on:keydown={(event) => event.key === 'Enter' && addTeam()} /><button class="button button-primary" on:click={addTeam}>+ Add team</button></div>{/if}</div></div>{#if allDivisionSelected}<div class="table-panel"><div class="table-toolbar"><div><h3>All divisions</h3><span class="muted">{tournament.teams.length} {tournament.teams.length === 1 ? 'team' : 'teams'} registered</span></div></div>{#if tournament.teams.length}<div class="team-list">{#each tournament.divisions as division}<div class="team-division"><h4 class="team-division-heading">{division.name}</h4>{@render TeamRows(division)}</div>{/each}</div>{:else}<div class="empty-table"><p>No teams registered yet.</p></div>{/if}</div>{:else if currentDivision}<div class="table-panel"><div class="table-toolbar"><div><h3>{currentDivision.name}</h3><span class="muted">{divisionTeams.length} {divisionTeams.length === 1 ? 'team' : 'teams'} registered</span></div></div>{#if divisionTeams.length}<div class="team-list">{@render TeamRows(currentDivision)}</div>{:else}<div class="empty-table"><p>No teams in this division yet.</p><button class="button button-secondary" on:click={() => document.querySelector<HTMLInputElement>('.inline-add input')?.focus()}>Add the first team</button></div>{/if}</div>{:else}<div class="empty-panel"><div class="empty-icon">◫</div><h3>Add a division first</h3><button class="button button-secondary" on:click={() => navigate('divisions')}>Go to divisions</button></div>{/if}</section>
+        <section class="content-section teams-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={openImport}>↥ Import teams</button>{#if !allDivisionSelected}<div class="inline-add"><input placeholder="Team name" bind:value={newTeamName} on:keydown={(event) => event.key === 'Enter' && addTeam()} /><button class="button button-primary" on:click={addTeam}>+ Add team</button></div>{/if}</div></div>{#if allDivisionSelected}<div class="table-panel"><div class="table-toolbar"><div><h3>All divisions</h3><span class="muted">{tournament.teams.length} {tournament.teams.length === 1 ? 'team' : 'teams'} registered</span></div></div>{#if tournament.teams.length}<div class="team-list">{#each tournament.divisions as division}<div class="team-division"><h4 class="team-division-heading">{division.name}</h4>{@render TeamRows(division)}</div>{/each}</div>{:else}<div class="empty-table"><p>No teams registered yet.</p></div>{/if}</div>{:else if currentDivision}<div class="table-panel"><div class="table-toolbar"><div><h3>{currentDivision.name}</h3><span class="muted">{divisionTeams.length} {divisionTeams.length === 1 ? 'team' : 'teams'} registered</span></div></div>{#if divisionTeams.length}<div class="team-list">{@render TeamRows(currentDivision)}</div>{:else}<div class="empty-table"><p>No teams in this division yet.</p><button class="button button-secondary" on:click={() => document.querySelector<HTMLInputElement>('.inline-add input')?.focus()}>Add the first team</button></div>{/if}</div>{:else}<div class="empty-panel"><div class="empty-icon">◫</div><h3>Add a division first</h3><button class="button button-secondary" on:click={() => navigate('divisions')}>Go to divisions</button></div>{/if}</section>
       {:else if view === 'pools'}
         <section class="content-section pools-view"><div class="section-intro section-intro-actions"><div class="toolbar"><button class="button button-secondary" on:click={regeneratePools}>⤨ {allDivisionSelected ? (poolViewPools.length ? 'Re-randomize all' : 'Generate all pools') : (poolViewPools.length ? 'Re-randomize' : 'Generate pools')}</button><button class="button button-primary" disabled={!poolViewPools.length || (allDivisionSelected && poolViewDivisions.some((division) => poolsForDivision(division.id).length === 0))} on:click={generateMatches}>{allDivisionSelected ? 'Generate all matches →' : 'Generate matches →'}</button></div></div>{#if currentDivision}{#if poolViewPools.length}{#if allDivisionSelected}<div class="pool-division-list">{#each poolViewDivisions as division}{#if poolsForDivision(division.id).length}<section class="pool-division"><div class="pool-division-heading"><h3>{division.name}</h3><span>{tournament.teams.filter((team) => team.divisionId === division.id).length} teams</span></div>{@render PoolGrid(poolsForDivision(division.id))}</section>{/if}{/each}</div>{:else}{@render PoolGrid(poolViewPools)}{/if}{:else}<div class="empty-panel pool-empty-panel"><div class="empty-icon">◈</div><h3>Ready to build pools</h3><button class="button button-primary" on:click={regeneratePools}>{allDivisionSelected ? 'Generate all pools' : 'Generate pools'}</button></div>{/if}{:else}<div class="empty-panel"><div class="empty-icon">◈</div><h3>Add a division first</h3><button class="button button-secondary" on:click={() => navigate('divisions')}>Go to divisions</button></div>{/if}</section>
       {:else if view === 'schedule'}
@@ -568,7 +659,59 @@
 
 {#if createOpen}<div class="modal-backdrop" role="presentation" on:click={(event) => event.target === event.currentTarget && (createOpen = false)}><div class="modal"><div class="modal-header"><div><div class="eyebrow">NEW TOURNAMENT</div><h2>Set up a tournament</h2></div><button class="close-button" on:click={() => createOpen = false}>×</button></div><div class="modal-body"><label>Tournament name<input placeholder="Saturday Pickleball Classic" bind:value={newTournamentName} /></label><div class="form-row"><label>Date<input type="date" bind:value={newTournamentDate} /></label><label>Courts<input type="number" min="1" bind:value={newTournamentCourts} /></label></div><label>Location <span class="optional">Optional</span><input placeholder="Harbor Athletic Club" bind:value={newTournamentLocation} /></label></div><div class="modal-footer"><button class="button button-secondary" on:click={() => createOpen = false}>Cancel</button><button class="button button-primary" on:click={createTournament}>Create tournament</button></div></div></div>{/if}
 
-{#if importOpen && tournament}<div class="modal-backdrop" role="presentation" on:click={(event) => event.target === event.currentTarget && (importOpen = false)}><div class="modal import-modal"><div class="modal-header"><div><div class="eyebrow">TEAM IMPORT</div><h2>Bring in a registration list</h2></div><button class="close-button" on:click={() => importOpen = false}>×</button></div><div class="modal-body"><div class="import-upload"><span>CSV file</span><label class="button button-secondary">Choose file<input type="file" accept=".csv,text/csv" on:change={handleImportFile} /></label></div><textarea rows="7" bind:value={importText} aria-label="CSV import contents"></textarea><button class="text-button" on:click={previewImport}>Preview import</button>{#if importPreview}<div class:has-errors={importPreview.errors.length > 0} class="import-preview"><strong>{importPreview.rows.length} teams found</strong><span>{importPreview.newDivisions.length} new divisions will be created</span>{#each importPreview.errors as error}<p>{error}</p>{/each}</div>{/if}</div><div class="modal-footer"><a class="text-button" href="data:text/csv;charset=utf-8,division%2Cteam%0AMixed%203.5%2CSmith%20%2F%20Jones%0AMixed%203.5%2CDavis%20%2F%20Chen" download="teams-template.csv">Download template</a><button class="button button-secondary" on:click={() => importOpen = false}>Cancel</button><button class="button button-primary" disabled={!importPreview || !!importPreview.errors.length} on:click={commitImport}>Import teams</button></div></div></div>{/if}
+{#if importOpen && tournament}
+  <div class="modal-backdrop" role="presentation" on:click={(event) => event.target === event.currentTarget && closeImport()}>
+    <div class="modal import-modal">
+      <div class="modal-header">
+        <div>
+          <div class="eyebrow">TEAM IMPORT</div>
+          <h2>Bring in a registration list</h2>
+          <p class="modal-help">Choose a CSV or spreadsheet. Pickle Desk inspects it locally and asks you to confirm the rows before changing the tournament.</p>
+        </div>
+        <button class="close-button" on:click={closeImport}>×</button>
+      </div>
+      <div class="modal-body">
+        <div class="import-upload">
+          <div><strong>{importFileName || 'Import a file'}</strong><span class="import-file-help">CSV, XLSX, or XLS · up to 10 MB</span></div>
+          <label class="button button-secondary">Choose file<input type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" on:change={handleImportFile} /></label>
+        </div>
+        <label class="import-paste-label">Paste CSV or table<textarea rows="6" bind:value={importText} aria-label="CSV or table import contents" placeholder="division,team&#10;Mixed 3.5,Smith / Jones"></textarea></label>
+        <button class="text-button" disabled={importBusy || !importText.trim()} on:click={previewImport}>{importBusy ? 'Inspecting…' : 'Preview pasted data'}</button>
+        {#if importError}<div class="import-preview has-errors"><p>{importError}</p></div>{/if}
+        {#if importReview}
+          <div class="import-review-body">
+            <div class="import-overview">
+              <div><strong>{importReadyCount} ready</strong><span>{importWarningCount} warnings</span><span>{importDuplicateCount} duplicates</span><span>{importNewDivisionCount} new divisions</span><span>{importIgnoredCount} ignored</span></div>
+              {#if importReview.errors.length}{#each importReview.errors as error}<p class="import-error">{error}</p>{/each}{:else if importReview.warnings.length}{#each importReview.warnings as warning}<p>{warning}</p>{/each}{/if}
+            </div>
+            <div class="import-sheets">
+              <strong>Sheets</strong>
+              {#each importReview.mappings as mapping}
+                <label><input type="checkbox" checked={mapping.selected} on:change={() => toggleImportSheet(mapping)} /> <span>{mapping.sheet}</span><small>{mapping.layout} · {mapping.foundRows} rows{#if mapping.reason} · {mapping.reason}{/if}</small></label>
+              {/each}
+            </div>
+            {#if importReview.rows.length}
+              <div class="import-review-table">
+                <div class="import-review-heading"><span>Division</span><span>Team</span><span>Source</span><span>Confidence</span><span>Action</span></div>
+                {#each importReview.rows as row (row.id)}
+                  <div class:excluded={!row.included} class:duplicate-row={row.duplicate} class="import-review-row">
+                    <input value={row.division} placeholder="Choose division" aria-label={`Division for row ${row.source.row}`} on:input={(event) => updateImportRow(row.id, 'division', (event.target as HTMLInputElement).value)} />
+                    <input value={row.team} placeholder="Team name" aria-label={`Team for row ${row.source.row}`} on:input={(event) => updateImportRow(row.id, 'team', (event.target as HTMLInputElement).value)} />
+                    <span class="import-source">{row.source.sheet}, row {row.source.row}</span>
+                    <span class={`confidence-${row.confidence}`}>{row.confidence}</span>
+                    <div class="import-row-action"><button class="text-button" on:click={() => toggleImportRow(row)}>{row.included ? 'Exclude' : row.duplicate ? 'Include anyway' : 'Include'}</button><details><summary>Why?</summary><span>{row.reasons.join(' ')}</span>{#each row.warnings as warning}<span class="import-warning">{warning}</span>{/each}</details></div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+            {#if importReview.ignoredRows.length}<details class="import-ignored"><summary>{importReview.ignoredRows.length} ignored rows</summary>{#each importReview.ignoredRows.slice(0, 12) as ignored}<span>{ignored.source.sheet}, row {ignored.source.row}: {ignored.reason}</span>{/each}</details>{/if}
+          </div>
+        {/if}
+      </div>
+      <div class="modal-footer"><a class="text-button" href="data:text/csv;charset=utf-8,division%2Cteam%0AMixed%203.5%2CSmith%20%2F%20Jones%0AMixed%203.5%2CDavis%20%2F%20Chen" download="teams-template.csv">Download simple template</a><button class="button button-secondary" on:click={closeImport}>Cancel</button><button class="button button-primary" disabled={!importCanCommit} on:click={commitImport}>Import {importReadyCount} teams</button></div>
+    </div>
+  </div>
+{/if}
 
 {#if toast}<div class="toast"><span>✓</span>{toast}</div>{/if}
 

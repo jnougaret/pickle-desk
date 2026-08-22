@@ -29,6 +29,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@e965/xlsx": "^0.20.3",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-sql": "^2.4.0"
   },
